@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# 가상환경
+.venv/
+venv/
+env/
+ENV/
+
+# 환경변수 / 시크릿
+.env
+.env.local
+secrets.toml
+
+# 모델 가중치 (Hugging Face Hub에 저장 — GitHub에 포함 금지)
+*.h5
+*.pt
+*.pth
+*.onnx
+*.tflite
+
+# 학습 데이터 (용량 큼 — Google Drive / 로컬만)
+data/raw/
+data/train/
+data/val/
+data/test/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Streamlit
+.streamlit/secrets.toml
