@@ -1,0 +1,6 @@
+# 자동 검수 전용 의존성 (로컬 실행용 — Streamlit Cloud 불필요)
+imagehash>=4.3.1
+torch>=2.0.0
+transformers>=4.40.0
+Pillow>=10.0.0
+numpy>=1.26.0
