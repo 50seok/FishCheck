@@ -10,26 +10,14 @@ MODEL_PATH = "models/best.pt"
 # 예: HF_REPO_ID=50seoks/fishcheck-model  (Streamlit Cloud → Secrets에 설정)
 HF_REPO_ID = os.getenv("HF_REPO_ID", "")
 
+SKIP_CLASSES = {"bangeo", "bushiri"}
+
 CLASS_KO = {
-    "bangeo" : "방어",
-    "bushiri": "부시리",
     "gajami" : "가자미/도다리",
     "gwangeo": "광어",
 }
 
 FISH_INFO = {
-    "bangeo": {
-        "학명": "Seriola quinqueradiata",
-        "특징": "옆구리에 노란색 가로줄이 있음. 꼬리지느러미도 노란빛.",
-        "구별포인트": "부시리보다 노란 줄이 진하고 주둥이가 더 뾰족하다.",
-        "주의": "부시리와 혼동 주의 — 노란 줄 선명도와 주둥이 모양으로 구분",
-    },
-    "bushiri": {
-        "학명": "Seriola lalandi",
-        "특징": "꼬리지느러미에 노란색이 없거나 희미하다.",
-        "구별포인트": "주둥이가 방어보다 둥글고, 옆 노란 줄이 흐리다.",
-        "주의": "방어와 혼동 주의 — 꼬리 색상과 주둥이 모양으로 구분",
-    },
     "gajami": {
         "학명": "Pleuronichthys cornutus",
         "특징": "몸이 납작하고 눈이 오른쪽. 입이 작고 체형이 둥글다.",
@@ -67,9 +55,13 @@ def predict(img: Image.Image) -> dict:
         return {"detected": False, "class_en": None, "class_ko": None, "confidence": 0.0, "top3": []}
 
     boxes = sorted(
-        [{"cls": int(b.cls[0]), "conf": float(b.conf[0])} for b in result.boxes],
+        [{"cls": int(b.cls[0]), "conf": float(b.conf[0])} for b in result.boxes
+         if result.names[int(b.cls[0])] not in SKIP_CLASSES],
         key=lambda x: x["conf"], reverse=True,
     )
+
+    if not boxes:
+        return {"detected": False, "class_en": None, "class_ko": None, "confidence": 0.0, "top3": []}
 
     best       = boxes[0]
     class_en   = result.names[best["cls"]]
