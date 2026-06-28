@@ -29,6 +29,7 @@ secrets.toml
 
 # 학습 데이터 (용량 큼 — Google Drive / 로컬만)
 data/raw/
+data/rejected/
 data/train/
 data/val/
 data/test/
@@ -47,3 +48,11 @@ Thumbs.db
 
 # Streamlit
 .streamlit/secrets.toml
+
+# 학습 데이터셋 및 결과 (용량 큼)
+data/fishcheck_v2/
+runs/
+models/
+
+
+ppt/

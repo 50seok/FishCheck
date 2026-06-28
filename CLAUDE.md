@@ -1,279 +1,273 @@
-# FishCheck 프로젝트 설정
+﻿# FishCheck ?꾨줈?앺듃 ?ㅼ젙
 
-**앱 목적**: 수산시장 어종 사기 방지 — 스마트폰 사진으로 7종 생선 판별
-**분류 대상**: 가자미 / 개볼락 / 광어 / 도다리 / 방어 / 부시리 / 우럭 (인덱스 알파벳 순)
-**스택**: Python 3.11 · TensorFlow 2.x (CPU) · Streamlit · Hugging Face Hub
-**배포**: Streamlit Cloud (GitHub `main` 브랜치 자동 배포)
-**모델**: EfficientNetB0 7-class, 입력 224×224 RGB, 가중치 `.h5`
-**학습**: Google Colab → `notebooks/train_fishcheck.ipynb`
-**가중치 저장**: Hugging Face Hub (학습 완료 후 `HF_REPO_ID` 여기에 기록)
-**데이터 원칙**: 생물(통 생선) 상태 이미지만 — 횟감·구이·조리된 것 제외
+**??紐⑹쟻**: ?섏궛?쒖옣 ?댁쥌 ?ш린 諛⑹? ???ㅻ쭏?명룿 ?ъ쭊?쇰줈 4醫??앹꽑 ?먮퀎
+**遺꾨쪟 ???*: 諛⑹뼱 / 遺?쒕━ / 愿묒뼱 / 媛?먮?(?꾨떎由??ы븿) ??4醫??뺤젙
+**?ㅽ깮**: Python 3.11 쨌 PyTorch 쨌 YOLOv8s (Ultralytics) 쨌 Streamlit 쨌 Hugging Face Hub
+**諛고룷**: Streamlit Cloud (GitHub `master` 釉뚮옖移??먮룞 諛고룷)
+**紐⑤뜽**: YOLOv8s Object Detection 4-class, ?낅젰 640횞640, 媛以묒튂 `best.pt`
+**?곗씠??*: Roboflow `50seoks-workspace/fishcheck-jqum0` v2 (442??+ 3횞 利앷컯)
+**?숈뒿**: Google Colab ?먮뒗 濡쒖뺄 GPU ??`notebooks/train_fishcheck.ipynb`
+**媛以묒튂 ???*: Hugging Face Hub (?숈뒿 ?꾨즺 ??`HF_REPO_ID` ?ш린??湲곕줉, Streamlit Cloud Secrets?먮룄 ?ㅼ젙)
+**?곗씠???먯튃**: ?앸Ъ(???앹꽑) ?곹깭 ?대?吏留????잕컧쨌援ъ씠쨌議곕━??寃??쒖쇅
 
 ---
 
-# 전역 설정 — CLAUDE.md
+# ?꾩뿭 ?ㅼ젙 ??CLAUDE.md
 
-> **설치(최초 1회)** — 이 파일을 `~/.claude/CLAUDE.md` 에 두면 전 프로젝트에 자동 적용. 룰이 호출하는 의존성:
-> - **ECC 플러그인**(code-reviewer·security-reviewer 에이전트 + 스킬): Claude Code에서 `/plugin marketplace add affaan-m/everything-claude-code` → `/plugin install everything-claude-code@everything-claude-code`
+> **?ㅼ튂(理쒖큹 1??** ?????뚯씪??`~/.claude/CLAUDE.md` ???먮㈃ ???꾨줈?앺듃???먮룞 ?곸슜. 猷곗씠 ?몄텧?섎뒗 ?섏〈??
+> - **ECC ?뚮윭洹몄씤**(code-reviewer쨌security-reviewer ?먯씠?꾪듃 + ?ㅽ궗): Claude Code?먯꽌 `/plugin marketplace add affaan-m/everything-claude-code` ??`/plugin install everything-claude-code@everything-claude-code`
 > - **GitHub CLI**: `brew install gh && gh auth login`
-> - **(브라우저 테스트 시) Playwright MCP**: `claude mcp add playwright -- npx @playwright/mcp@latest`
-> - `SendMessage`·`Agent`·Plan/Explore 서브에이전트는 Claude Code **내장**(설치 불필요).
+> - **(釉뚮씪?곗? ?뚯뒪???? Playwright MCP**: `claude mcp add playwright -- npx @playwright/mcp@latest`
+> - `SendMessage`쨌`Agent`쨌Plan/Explore ?쒕툕?먯씠?꾪듃??Claude Code **?댁옣**(?ㅼ튂 遺덊븘??.
 
-## 커뮤니케이션
-- 항상 존댓말, 간결·핵심만. 코드 수정 후 한국어로 이유 설명(설명 먼저 → 이해 후 커밋).
+## 而ㅻ??덉??댁뀡
+- ??긽 議대뙎留? 媛꾧껐쨌?듭떖留? 肄붾뱶 ?섏젙 ???쒓뎅?대줈 ?댁쑀 ?ㅻ챸(?ㅻ챸 癒쇱? ???댄빐 ??而ㅻ컠).
 
-## 커밋 & PR
-- 커밋 한국어 `feat/fix/refactor/docs/chore: 내용`. PR base=`main`, 머지 요청 시 바로 진행(단, 머지 직전 체크리스트·G6는 그래도 필수).
-- **`Co-Authored-By` 금지.** 커밋·푸시 전 **시크릿 스캔 필수**.
+## 而ㅻ컠 & PR
+- 而ㅻ컠 ?쒓뎅??`feat/fix/refactor/docs/chore: ?댁슜`. PR base=`main`, 癒몄? ?붿껌 ??諛붾줈 吏꾪뻾(?? 癒몄? 吏곸쟾 泥댄겕由ъ뒪?맞텴6??洹몃옒???꾩닔).
+- **`Co-Authored-By` 湲덉?.** 而ㅻ컠쨌?몄떆 ??**?쒗겕由??ㅼ틪 ?꾩닔**.
 
-## 시크릿 스캔 (커밋·푸시 전 의무)
+## ?쒗겕由??ㅼ틪 (而ㅻ컠쨌?몄떆 ???섎Т)
 ```bash
 git diff --cached | grep -iE "(password|passwd|secret|token|api_key|apikey|access_key|private_key|sk-|ghp_|gho_|glpat-|AKIA|AIza)['\"]?\s*[:=]\s*['\"][^'\"]{8,}"
 ```
-대상: API키(`sk-`,`ghp_`,`gho_`,`glpat-`,`AKIA`,`AIza`) · 비번/토큰(`password=`,`secret=`,`token=`,`Bearer ` 하드코딩 값) · DB URL(`jdbc:`,`mysql://`,`mongodb://`) · 개인키(`-----BEGIN … PRIVATE KEY-----`).
-- 실제 값 → **커밋 중단** → 환경변수(`.env`/`application-local.yml`) 분리 + `.gitignore` 확인 → 재스캔 통과 후 커밋.
-- 더미값(`test`/`example`/`your-key-here`)·환경변수 참조(`${SECRET}`,`os.getenv`) → 통과.
-- **이미 push됨** → 즉시 토큰 재발급 → 사용자 알림 → 히스토리 정리(`filter-branch`/`BFG`).
+??? API??`sk-`,`ghp_`,`gho_`,`glpat-`,`AKIA`,`AIza`) 쨌 鍮꾨쾲/?좏겙(`password=`,`secret=`,`token=`,`Bearer ` ?섎뱶肄붾뵫 媛? 쨌 DB URL(`jdbc:`,`mysql://`,`mongodb://`) 쨌 媛쒖씤??`-----BEGIN ??PRIVATE KEY-----`).
+- ?ㅼ젣 媛???**而ㅻ컠 以묐떒** ???섍꼍蹂??`.env`/`application-local.yml`) 遺꾨━ + `.gitignore` ?뺤씤 ???ъ뒪罹??듦낵 ??而ㅻ컠.
+- ?붾?媛?`test`/`example`/`your-key-here`)쨌?섍꼍蹂??李몄“(`${SECRET}`,`os.getenv`) ???듦낵.
+- **?대? push??* ??利됱떆 ?좏겙 ?щ컻湲????ъ슜???뚮┝ ???덉뒪?좊━ ?뺣━(`filter-branch`/`BFG`).
 
-## 서버·브라우저 정리 (테스트 후 의무)
-- 테스트 서버(Spring Boot·Vite·Flask·Next dev 등)는 테스트 후 즉시 종료: `lsof -ti:<port>` → `kill`.
-- **브라우저 자동화 테스트(Playwright MCP·Claude in Chrome 등)는 종료 시 연 브라우저·탭을 필수로 닫는다**(`browser_close` 등). 백그라운드 크롬·헤드리스 프로세스를 남기지 말 것.
+## ?쒕쾭쨌釉뚮씪?곗? ?뺣━ (?뚯뒪?????섎Т)
+- ?뚯뒪???쒕쾭(Spring Boot쨌Vite쨌Flask쨌Next dev ?????뚯뒪????利됱떆 醫낅즺: `lsof -ti:<port>` ??`kill`.
+- **釉뚮씪?곗? ?먮룞???뚯뒪??Playwright MCP쨌Claude in Chrome ????醫낅즺 ????釉뚮씪?곗?쨌??쓣 ?꾩닔濡??ル뒗??*(`browser_close` ??. 諛깃렇?쇱슫???щ＼쨌?ㅻ뱶由ъ뒪 ?꾨줈?몄뒪瑜??④린吏 留?寃?
 
 ---
 
-> **코딩 컨벤션 = 패턴 템플릿.** 전역은 구조·계층·네이밍 원칙만 정의한다. `{앱}`·`{도메인}`·`{tenant}`·DB·배포 타깃·멀티테넌트 여부 등 **구체값은 프로젝트 시작 시 프로젝트 CLAUDE.md에서 확정**(전역값을 그대로 박지 말 것). 쓰는 스택만 골라 적용.
+> **肄붾뵫 而⑤깽??= ?⑦꽩 ?쒗뵆由?** ?꾩뿭? 援ъ“쨌怨꾩링쨌?ㅼ씠諛??먯튃留??뺤쓽?쒕떎. `{??`쨌`{?꾨찓??`쨌`{tenant}`쨌DB쨌諛고룷 ?源꺜룸??고뀒?뚰듃 ?щ? ??**援ъ껜媛믪? ?꾨줈?앺듃 ?쒖옉 ???꾨줈?앺듃 CLAUDE.md?먯꽌 ?뺤젙**(?꾩뿭媛믪쓣 洹몃?濡?諛뺤? 留?寃?. ?곕뒗 ?ㅽ깮留?怨⑤씪 ?곸슜.
 
-<!-- [비활성] Java/Spring Boot — 필요 시 주석 해제
-# 코딩 컨벤션 (Java / Spring Boot)
-**스택**: Java 21 · Spring Boot 3.x · jakarta.*(javax 금지) · JPA+QueryDSL · MySQL · Redis
-**패키지**: controller / service / repository / entity / dto / exception / config / scheduler / init
+<!-- [鍮꾪솢?? Java/Spring Boot ???꾩슂 ??二쇱꽍 ?댁젣
+# 肄붾뵫 而⑤깽??(Java / Spring Boot)
+**?ㅽ깮**: Java 21 쨌 Spring Boot 3.x 쨌 jakarta.*(javax 湲덉?) 쨌 JPA+QueryDSL 쨌 MySQL 쨌 Redis
+**?⑦궎吏**: controller / service / repository / entity / dto / exception / config / scheduler / init
 
-| 영역 | 규칙 |
+| ?곸뿭 | 洹쒖튃 |
 |---|---|
-| Entity | @Getter만(Setter 금지), @NoArgsConstructor(PROTECTED)+@Builder, Soft Delete=@SQLDelete+@SQLRestriction, @PrePersist로 createdAt/기본status, 상태전이는 엔티티 메서드로 캡슐화 |
-| DTO | Request=Record+Bean Validation, Response=Record+`from(Entity)`, 네이밍 `{도메인}Request/Response`, 엔티티 직접 노출 금지 |
-| Repository | 단순조회=메서드 네이밍, N+1 방지=@EntityGraph, 복잡쿼리=`{Repo}Custom+Impl`, QueryDSL Projections로 DTO 매핑 |
-| Service | 클래스 `@Transactional(readOnly=true)`, 쓰기만 `@Transactional` 명시, Controller엔 금지. 예외=`CustomException(ErrorCode)`. 캐시=`@Cacheable/@CacheEvict`(Redis) |
-| Controller | `ResponseEntity<DTO>`+상태코드, `@Valid` 항상, Swagger `@Tag/@Operation` 필수, 비즈니스 로직 금지 |
-| Exception | ErrorCode enum(HttpStatus+code+message), `CustomException(ErrorCode)` 단일패턴, GlobalExceptionHandler 일괄, 응답=`{timestamp,code,message}` |
-| Flyway | `V{n}__{설명}.sql`, 한 파일=한 변경, **기존 마이그레이션 수정 금지** |
+| Entity | @Getter留?Setter 湲덉?), @NoArgsConstructor(PROTECTED)+@Builder, Soft Delete=@SQLDelete+@SQLRestriction, @PrePersist濡?createdAt/湲곕낯status, ?곹깭?꾩씠???뷀떚??硫붿꽌?쒕줈 罹≪뒓??|
+| DTO | Request=Record+Bean Validation, Response=Record+`from(Entity)`, ?ㅼ씠諛?`{?꾨찓??Request/Response`, ?뷀떚??吏곸젒 ?몄텧 湲덉? |
+| Repository | ?⑥닚議고쉶=硫붿꽌???ㅼ씠諛? N+1 諛⑹?=@EntityGraph, 蹂듭옟荑쇰━=`{Repo}Custom+Impl`, QueryDSL Projections濡?DTO 留ㅽ븨 |
+| Service | ?대옒??`@Transactional(readOnly=true)`, ?곌린留?`@Transactional` 紐낆떆, Controller??湲덉?. ?덉쇅=`CustomException(ErrorCode)`. 罹먯떆=`@Cacheable/@CacheEvict`(Redis) |
+| Controller | `ResponseEntity<DTO>`+?곹깭肄붾뱶, `@Valid` ??긽, Swagger `@Tag/@Operation` ?꾩닔, 鍮꾩쫰?덉뒪 濡쒖쭅 湲덉? |
+| Exception | ErrorCode enum(HttpStatus+code+message), `CustomException(ErrorCode)` ?⑥씪?⑦꽩, GlobalExceptionHandler ?쇨큵, ?묐떟=`{timestamp,code,message}` |
+| Flyway | `V{n}__{?ㅻ챸}.sql`, ???뚯씪=??蹂寃? **湲곗〈 留덉씠洹몃젅?댁뀡 ?섏젙 湲덉?** |
 
-**네이밍**: Entity=PascalCase, Enum=UPPER_SNAKE_CASE, Service=`find/create/update/delete~`, API URL=kebab-case 복수형(`/api/work-orders`), ErrorCode=도메인 prefix+3자리(E001). **테스트 항상 동반.**
+**?ㅼ씠諛?*: Entity=PascalCase, Enum=UPPER_SNAKE_CASE, Service=`find/create/update/delete~`, API URL=kebab-case 蹂듭닔??`/api/work-orders`), ErrorCode=?꾨찓??prefix+3?먮━(E001). **?뚯뒪????긽 ?숇컲.**
 
-**ECC 스킬 자동 적용**: 새 기능·버그·엔드포인트→`/springboot-tdd` · 테스트→`/tdd-workflow` · 인증/인가/시크릿/민감데이터→`/security-review` · Flyway→`/database-migrations` · REST 설계→`/api-design`
+**ECC ?ㅽ궗 ?먮룞 ?곸슜**: ??湲곕뒫쨌踰꾧렇쨌?붾뱶?ъ씤?멤넂`/springboot-tdd` 쨌 ?뚯뒪?멤넂`/tdd-workflow` 쨌 ?몄쬆/?멸?/?쒗겕由?誘쇨컧?곗씠?겸넂`/security-review` 쨌 Flyway??/database-migrations` 쨌 REST ?ㅺ퀎??/api-design`
 -->
 
 ---
 
-# 코딩 컨벤션 (Python / Flask)
-**스택(기본값, 프로젝트별 조정)**: Python 3.11 · Flask 3.1 · Gunicorn · Pydantic · pytest. DB·배포·외부연동은 프로젝트 선택(예: Supabase/PostgreSQL, Render, APScheduler).
-**패키지 구조 템플릿** (`{도메인}`은 프로젝트값으로 치환):
+# 肄붾뵫 而⑤깽??(Python / Flask)
+**?ㅽ깮(湲곕낯媛? ?꾨줈?앺듃蹂?議곗젙)**: Python 3.11 쨌 Flask 3.1 쨌 Gunicorn 쨌 Pydantic 쨌 pytest. DB쨌諛고룷쨌?몃??곕룞? ?꾨줈?앺듃 ?좏깮(?? Supabase/PostgreSQL, Render, APScheduler).
+**?⑦궎吏 援ъ“ ?쒗뵆由?* (`{?꾨찓??`? ?꾨줈?앺듃媛믪쑝濡?移섑솚):
 ```
 backend/
-  main.py · requirements.txt · .env(.example) · {배포설정 예: render.yaml} · db/schema.sql
-  app/__init__.py(create_app) · config.py · errors.py
+  main.py 쨌 requirements.txt 쨌 .env(.example) 쨌 {諛고룷?ㅼ젙 ?? render.yaml} 쨌 db/schema.sql
+  app/__init__.py(create_app) 쨌 config.py 쨌 errors.py
   app/middleware/   (auth.py)
-  app/routes/       (Blueprint, {도메인}.py)
-  app/services/     ({도메인}_service.py)
-  app/repositories/ (base.py + {도메인}_repository.py)
-  app/models/       (schemas.py — Pydantic)
-  app/utils/        (외부 연동 팩토리: DB 클라이언트·스케줄러·AI 등 필요 시)
+  app/routes/       (Blueprint, {?꾨찓??.py)
+  app/services/     ({?꾨찓??_service.py)
+  app/repositories/ (base.py + {?꾨찓??_repository.py)
+  app/models/       (schemas.py ??Pydantic)
+  app/utils/        (?몃? ?곕룞 ?⑺넗由? DB ?대씪?댁뼵?맞룹뒪耳以꾨윭쨌AI ???꾩슂 ??
   tests/            (conftest.py + test_*.py)
 ```
 
-| 영역 | 규칙 |
+| ?곸뿭 | 洹쒖튃 |
 |---|---|
-| 계층 흐름 | middleware → routes(Blueprint) → services → repositories → DB. 단방향, 역참조 금지 |
-| Middleware | `require_auth`(JWT 검증 → `g.user`). 인증 실패 401 / 권한 없음 403 |
-| Routes | Blueprint, 요청 파싱+service 호출+상태코드만. 비즈니스 로직 금지. URL=kebab-case 복수형(`/api/{리소스}`) |
-| Services | 도메인 규칙·검증. 예외=`ApiError(status, message)` 단일 패턴. `g.user`는 내부에서 읽음. repo는 **모듈 수준 인스턴스**(테스트 `patch` 가능) |
-| Repositories | DB CRUD, `BaseRepository` 상속. 조회는 명시 컬럼(과다조회 주의) |
-| Models | Pydantic Request/Response(`models/schemas.py`), Enum=`str,Enum`. dict 직접 노출 자제 |
-| 에러 | `ApiError(code,msg)` → `register_error_handlers` 일괄 → 응답 `{"error":msg}`(+detail). 500은 스택 로깅 |
-| 외부 클라이언트 | DB/AI 클라이언트는 `utils/` 단일 팩토리(예: `get_supabase()`), 키는 env, **repo/service에서만** 호출 |
-| 테스트 | pytest `tests/test_*.py` + conftest 픽스처. 기능·엣지 테스트 동반 |
+| 怨꾩링 ?먮쫫 | middleware ??routes(Blueprint) ??services ??repositories ??DB. ?⑤갑?? ??갭議?湲덉? |
+| Middleware | `require_auth`(JWT 寃利???`g.user`). ?몄쬆 ?ㅽ뙣 401 / 沅뚰븳 ?놁쓬 403 |
+| Routes | Blueprint, ?붿껌 ?뚯떛+service ?몄텧+?곹깭肄붾뱶留? 鍮꾩쫰?덉뒪 濡쒖쭅 湲덉?. URL=kebab-case 蹂듭닔??`/api/{由ъ냼??`) |
+| Services | ?꾨찓??洹쒖튃쨌寃利? ?덉쇅=`ApiError(status, message)` ?⑥씪 ?⑦꽩. `g.user`???대??먯꽌 ?쎌쓬. repo??**紐⑤뱢 ?섏? ?몄뒪?댁뒪**(?뚯뒪??`patch` 媛?? |
+| Repositories | DB CRUD, `BaseRepository` ?곸냽. 議고쉶??紐낆떆 而щ읆(怨쇰떎議고쉶 二쇱쓽) |
+| Models | Pydantic Request/Response(`models/schemas.py`), Enum=`str,Enum`. dict 吏곸젒 ?몄텧 ?먯젣 |
+| ?먮윭 | `ApiError(code,msg)` ??`register_error_handlers` ?쇨큵 ???묐떟 `{"error":msg}`(+detail). 500? ?ㅽ깮 濡쒓퉭 |
+| ?몃? ?대씪?댁뼵??| DB/AI ?대씪?댁뼵?몃뒗 `utils/` ?⑥씪 ?⑺넗由??? `get_supabase()`), ?ㅻ뒗 env, **repo/service?먯꽌留?* ?몄텧 |
+| ?뚯뒪??| pytest `tests/test_*.py` + conftest ?쎌뒪泥? 湲곕뒫쨌?ｌ? ?뚯뒪???숇컲 |
 
-**네이밍**: 파일·함수 snake_case, 클래스 PascalCase, Enum 값 UPPER_SNAKE. Service 메서드 `list/get/create/update/delete`.
-**ECC 스킬**: 인증/시크릿→`/security-review` · REST 설계→`/api-design` · 테스트→`/tdd-workflow`.
-**멀티테넌트(B2B) 프로젝트만 추가**(흔치 않음): `middleware/tenant.py`+`services/tenant_guard.py` → 헤더 테넌트ID(`X-…-Id`)는 **입력값 취급**, 매 요청 멤버십 재검증(cross-tenant IDOR 차단) · repo 테넌트 스코프 필수(`.eq('{tenant}_id', …)`)+컬럼 비정규화 · 격리 테스트 동반.
+**?ㅼ씠諛?*: ?뚯씪쨌?⑥닔 snake_case, ?대옒??PascalCase, Enum 媛?UPPER_SNAKE. Service 硫붿꽌??`list/get/create/update/delete`.
+**ECC ?ㅽ궗**: ?몄쬆/?쒗겕由욋넂`/security-review` 쨌 REST ?ㅺ퀎??/api-design` 쨌 ?뚯뒪?멤넂`/tdd-workflow`.
+**硫?고뀒?뚰듃(B2B) ?꾨줈?앺듃留?異붽?**(?붿튂 ?딆쓬): `middleware/tenant.py`+`services/tenant_guard.py` ???ㅻ뜑 ?뚮꼳?퇙D(`X-??Id`)??**?낅젰媛?痍④툒**, 留??붿껌 硫ㅻ쾭???ш?利?cross-tenant IDOR 李⑤떒) 쨌 repo ?뚮꼳???ㅼ퐫???꾩닔(`.eq('{tenant}_id', ??`)+而щ읆 鍮꾩젙洹쒗솕 쨌 寃⑸━ ?뚯뒪???숇컲.
 
 ---
 
-<!-- [비활성] TypeScript/Next.js — 필요 시 주석 해제
-# 코딩 컨벤션 (TypeScript / Next.js)
-**스택(기본값)**: Next.js 16(App Router) · TypeScript · Tailwind 4. 인증·배포는 프로젝트 선택(예: Supabase Auth, Vercel).
-**패키지 구조 템플릿**:
+<!-- [鍮꾪솢?? TypeScript/Next.js ???꾩슂 ??二쇱꽍 ?댁젣
+# 肄붾뵫 而⑤깽??(TypeScript / Next.js)
+**?ㅽ깮(湲곕낯媛?**: Next.js 16(App Router) 쨌 TypeScript 쨌 Tailwind 4. ?몄쬆쨌諛고룷???꾨줈?앺듃 ?좏깮(?? Supabase Auth, Vercel).
+**?⑦궎吏 援ъ“ ?쒗뵆由?*:
 ```
 frontend/src/
-  app/(auth)/      (login·signup 등 인증 화면)
-  app/(dashboard)/ (layout.tsx + {도메인}/page.tsx, [id] 동적)
-  app/layout.tsx · app/page.tsx · app/globals.css  [ · app/auth/callback — OAuth 시]
-  components/{영역}/  (PascalCase.tsx)
-  lib/api/         (client.ts + endpoints.ts + {도메인}.ts)
-  lib/{외부}/       (예: supabase/)
-  types/index.ts · constants/index.ts
+  app/(auth)/      (login쨌signup ???몄쬆 ?붾㈃)
+  app/(dashboard)/ (layout.tsx + {?꾨찓??/page.tsx, [id] ?숈쟻)
+  app/layout.tsx 쨌 app/page.tsx 쨌 app/globals.css  [ 쨌 app/auth/callback ??OAuth ??
+  components/{?곸뿭}/  (PascalCase.tsx)
+  lib/api/         (client.ts + endpoints.ts + {?꾨찓??.ts)
+  lib/{?몃?}/       (?? supabase/)
+  types/index.ts 쨌 constants/index.ts
 ```
 
-| 영역 | 규칙 |
+| ?곸뿭 | 洹쒖튃 |
 |---|---|
-| 라우팅 | App Router, route group `(auth)`/`(dashboard)`, `layout.tsx`+`page.tsx`, 동적 `[id]`. URL kebab-case |
-| API 호출 | `import { api, authHeaders } from "@/lib/api/client"`. 도메인 래퍼 `lib/api/{도메인}.ts`, 경로 상수 `lib/api/endpoints.ts`. **URL 하드코딩 금지** → `NEXT_PUBLIC_API_URL`(미설정 시 프로덕션 빌드 실패 처리) |
-| 인증 | 토큰은 **앱 prefix 키**로 저장 `localStorage['{앱}AccessToken']`(프로젝트마다 prefix 통일). 요청 헤더=`authHeaders(token)` → `Authorization: Bearer` |
-| 컴포넌트 | `components/{영역}/PascalCase.tsx`. 상태·이벤트 쓰면 `'use client'` |
-| 타입/상수 | 공유 타입 `types/index.ts`, 라벨·상수 `constants/index.ts`(백엔드 Enum과 값 일치) |
-| 에러 | `api`가 던지는 Error에 `.status` 실림 → 메시지 매칭 대신 **status로 분기**(예: 404만 null) |
-| 빌드 | `npm run build` PASS + lint 통과 |
+| ?쇱슦??| App Router, route group `(auth)`/`(dashboard)`, `layout.tsx`+`page.tsx`, ?숈쟻 `[id]`. URL kebab-case |
+| API ?몄텧 | `import { api, authHeaders } from "@/lib/api/client"`. ?꾨찓???섑띁 `lib/api/{?꾨찓??.ts`, 寃쎈줈 ?곸닔 `lib/api/endpoints.ts`. **URL ?섎뱶肄붾뵫 湲덉?** ??`NEXT_PUBLIC_API_URL`(誘몄꽕?????꾨줈?뺤뀡 鍮뚮뱶 ?ㅽ뙣 泥섎━) |
+| ?몄쬆 | ?좏겙? **??prefix ??*濡????`localStorage['{??AccessToken']`(?꾨줈?앺듃留덈떎 prefix ?듭씪). ?붿껌 ?ㅻ뜑=`authHeaders(token)` ??`Authorization: Bearer` |
+| 而댄룷?뚰듃 | `components/{?곸뿭}/PascalCase.tsx`. ?곹깭쨌?대깽???곕㈃ `'use client'` |
+| ????곸닔 | 怨듭쑀 ???`types/index.ts`, ?쇰꺼쨌?곸닔 `constants/index.ts`(諛깆뿏??Enum怨?媛??쇱튂) |
+| ?먮윭 | `api`媛 ?섏???Error??`.status` ?ㅻ┝ ??硫붿떆吏 留ㅼ묶 ???**status濡?遺꾧린**(?? 404留?null) |
+| 鍮뚮뱶 | `npm run build` PASS + lint ?듦낵 |
 
-**네이밍**: 컴포넌트·타입 PascalCase, 함수·변수 camelCase, 라우트 폴더 kebab-case.
-**멀티테넌트일 때만**: `authHeaders(token, tenantId)`로 테넌트 헤더(`X-…-Id`) 추가 + 테넌트 ID도 앱 prefix 키로 저장.
+**?ㅼ씠諛?*: 而댄룷?뚰듃쨌???PascalCase, ?⑥닔쨌蹂??camelCase, ?쇱슦???대뜑 kebab-case.
+**硫?고뀒?뚰듃???뚮쭔**: `authHeaders(token, tenantId)`濡??뚮꼳???ㅻ뜑(`X-??Id`) 異붽? + ?뚮꼳??ID????prefix ?ㅻ줈 ???
 -->
 
 ---
 
-# Git 워크트리 워크플로우 (예외 없음)
-**브랜치=워크트리명**: `{역할}/{이슈}-{세부}` (예 `backend/42-sensor-api`).
-메인 세션은 **main 유지 · 구현은 서브에이전트**(원칙적으로 직접 코드 작성 금지 — 예외: 한 줄 픽스·Trivial은 메인 직접 허용).
+# Git ?뚰겕?몃━ ?뚰겕?뚮줈??(?덉쇅 ?놁쓬)
+**釉뚮옖移??뚰겕?몃━紐?*: `{??븷}/{?댁뒋}-{?몃?}` (??`backend/42-sensor-api`).
+硫붿씤 ?몄뀡? **main ?좎? 쨌 援ы쁽? ?쒕툕?먯씠?꾪듃**(?먯튃?곸쑝濡?吏곸젒 肄붾뱶 ?묒꽦 湲덉? ???덉쇅: ??以??쎌뒪쨌Trivial? 硫붿씤 吏곸젒 ?덉슜).
 
-> **스택별 빌드/테스트 명령**(아래 단계에서 "테스트/빌드"는 이 표로 치환): Java=`./gradlew compileJava` + `./gradlew test` · Flask=`pytest` · Next=`npm run build`(+`npm test`).
+> **?ㅽ깮蹂?鍮뚮뱶/?뚯뒪??紐낅졊**(?꾨옒 ?④퀎?먯꽌 "?뚯뒪??鍮뚮뱶"?????쒕줈 移섑솚): Java=`./gradlew compileJava` + `./gradlew test` 쨌 Flask=`pytest` 쨌 Next=`npm run build`(+`npm test`).
 
-## 순서
-1. 레포 없으면 `gh repo create` 먼저. `docs/STATUS.md` 없으면 표준 템플릿 생성.
-2. 이슈 등록 `gh issue create --title "feat: …" --label feature` → 번호 확인.
-3. 코드 분석(Explore 서브에이전트로 기존 패턴·재사용 파악) → Plan 모드 계획 → 사용자 승인.
-4. **구현 서브 디스패치** `git worktree add ../{name} -b {branch}`. 책임/금지 = ↓[서브 책임 블록].
-5. **메인 검수**(순서·누락 금지):
-   - 워크트리에서 **테스트 재실행**(스택별 명령, 서브 보고 검증).
-   - **code-reviewer 호출**(메인이 직접 Agent) — 트리거: 버그수정 / 서비스·레포 변경 / 트랜잭션·동시성·분산락 / DB쿼리·배치 / 마이그레이션. 프롬프트=변경파일 절대경로+의도+P1/P2/P3 분류.
-   - **security-reviewer 호출**(해당 시) — 트리거: 인증·인가 / API키·시크릿 / 결제·환불 / 외부API / Webhook / 멱등성 / Rate-Limit.
-   - reviewer 원본 평가 — **P 등급 임의 다운그레이드 금지**.
-6. **P1 픽스 루프**(메인 주도, **cap 2회**): SendMessage(구현 서브) 픽스 → SendMessage(리뷰어 서브) 재검토. 한 줄은 메인 직접. cap 초과 P1 잔존 → PR 분할 / 후속 이슈 분리(P2 격하 시 PR 본문 명시) / 사용자 에스컬레이션.
-7. **PR 생성**(`Closes #N` 필수, 본문=↓[PR 템플릿]).
-8. **머지 직전 체크**(누락 시 머지 금지): Self-Review P1 카운트 일치 · code-reviewer P1 잔존 0 · 보안영역이면 Security Review 섹션 존재 · 빌드/테스트 PASS 명시 · auto-review.yml PASS.
-9. **머지 직후**(누락 금지): `gh issue comment {N}`(Critical이면 reviewer P1도 기록) · README 갱신(새 ErrorCode/환경변수/API/의존성/마이그레이션 시) · **`docs/STATUS.md` 갱신**(A-B-C에선 A만).
-10. **정리**: `git worktree remove … && git branch -d … && git push origin --delete …`
+## ?쒖꽌
+1. ?덊룷 ?놁쑝硫?`gh repo create` 癒쇱?. `docs/STATUS.md` ?놁쑝硫??쒖? ?쒗뵆由??앹꽦.
+2. ?댁뒋 ?깅줉 `gh issue create --title "feat: ?? --label feature` ??踰덊샇 ?뺤씤.
+3. 肄붾뱶 遺꾩꽍(Explore ?쒕툕?먯씠?꾪듃濡?湲곗〈 ?⑦꽩쨌?ъ궗???뚯븙) ??Plan 紐⑤뱶 怨꾪쉷 ???ъ슜???뱀씤.
+4. **援ы쁽 ?쒕툕 ?붿뒪?⑥튂** `git worktree add ../{name} -b {branch}`. 梨낆엫/湲덉? = ???쒕툕 梨낆엫 釉붾줉].
+5. **硫붿씤 寃??*(?쒖꽌쨌?꾨씫 湲덉?):
+   - ?뚰겕?몃━?먯꽌 **?뚯뒪???ъ떎??*(?ㅽ깮蹂?紐낅졊, ?쒕툕 蹂닿퀬 寃利?.
+   - **code-reviewer ?몄텧**(硫붿씤??吏곸젒 Agent) ???몃━嫄? 踰꾧렇?섏젙 / ?쒕퉬?ㅒ룸젅??蹂寃?/ ?몃옖??뀡쨌?숈떆?굿룸텇?곕씫 / DB荑쇰━쨌諛곗튂 / 留덉씠洹몃젅?댁뀡. ?꾨＼?꾪듃=蹂寃쏀뙆???덈?寃쎈줈+?섎룄+P1/P2/P3 遺꾨쪟.
+   - **security-reviewer ?몄텧**(?대떦 ?? ???몃━嫄? ?몄쬆쨌?멸? / API?ㅒ룹떆?щ┸ / 寃곗젣쨌?섎텋 / ?몃?API / Webhook / 硫깅벑??/ Rate-Limit.
+   - reviewer ?먮낯 ?됯? ??**P ?깃툒 ?꾩쓽 ?ㅼ슫洹몃젅?대뱶 湲덉?**.
+6. **P1 ?쎌뒪 猷⑦봽**(硫붿씤 二쇰룄, **cap 2??*): SendMessage(援ы쁽 ?쒕툕) ?쎌뒪 ??SendMessage(由щ럭???쒕툕) ?ш??? ??以꾩? 硫붿씤 吏곸젒. cap 珥덇낵 P1 ?붿〈 ??PR 遺꾪븷 / ?꾩냽 ?댁뒋 遺꾨━(P2 寃⑺븯 ??PR 蹂몃Ц 紐낆떆) / ?ъ슜???먯뒪而щ젅?댁뀡.
+7. **PR ?앹꽦**(`Closes #N` ?꾩닔, 蹂몃Ц=??PR ?쒗뵆由?).
+8. **癒몄? 吏곸쟾 泥댄겕**(?꾨씫 ??癒몄? 湲덉?): Self-Review P1 移댁슫???쇱튂 쨌 code-reviewer P1 ?붿〈 0 쨌 蹂댁븞?곸뿭?대㈃ Security Review ?뱀뀡 議댁옱 쨌 鍮뚮뱶/?뚯뒪??PASS 紐낆떆 쨌 auto-review.yml PASS.
+9. **癒몄? 吏곹썑**(?꾨씫 湲덉?): `gh issue comment {N}`(Critical?대㈃ reviewer P1??湲곕줉) 쨌 README 媛깆떊(??ErrorCode/?섍꼍蹂??API/?섏〈??留덉씠洹몃젅?댁뀡 ?? 쨌 **`docs/STATUS.md` 媛깆떊**(A-B-C?먯꽑 A留?.
+10. **?뺣━**: `git worktree remove ??&& git branch -d ??&& git push origin --delete ??
 
-**버그 판단**: 현재 작업 관련→같은 워크트리 / 무관→새 이슈+워크트리 / 긴급 프로덕션→main에서 `hotfix/{N}-{내용}` 브랜치(구현은 서브).
+**踰꾧렇 ?먮떒**: ?꾩옱 ?묒뾽 愿?ⓥ넂媛숈? ?뚰겕?몃━ / 臾닿??믪깉 ?댁뒋+?뚰겕?몃━ / 湲닿툒 ?꾨줈?뺤뀡?뭢ain?먯꽌 `hotfix/{N}-{?댁슜}` 釉뚮옖移?援ы쁽? ?쒕툕).
 
-## 서브 책임 블록 (모든 구현 서브 프롬프트에 명시)
+## ?쒕툕 梨낆엫 釉붾줉 (紐⑤뱺 援ы쁽 ?쒕툕 ?꾨＼?꾪듃??紐낆떆)
 ```
-## 책임 (이것만)
-1. 워크트리+브랜치 생성(지정 이름)
-2. 코드 + 단위/통합 테스트
-3. 빌드/테스트 PASS (스택별: Java=./gradlew compileJava+test · Flask=pytest · Next=npm run build, 오류 0)
-4. 단계별 커밋(feat: 모델/스키마→서비스→라우트·컨트롤러→테스트 순, 스택 계층대로), push 금지
-5. 메인/A에 보고: 변경파일 절대경로 + 의도 + 빌드결과
-## 금지 (메인/A가 함)
-self-review·security-review 호출 / PR 작성·생성 / push / 머지 / STATUS.md 수정
-보고 후 대기 (메인이 SendMessage로 P1 픽스 명령 가능)
+## 梨낆엫 (?닿쾬留?
+1. ?뚰겕?몃━+釉뚮옖移??앹꽦(吏???대쫫)
+2. 肄붾뱶 + ?⑥쐞/?듯빀 ?뚯뒪??3. 鍮뚮뱶/?뚯뒪??PASS (?ㅽ깮蹂? Java=./gradlew compileJava+test 쨌 Flask=pytest 쨌 Next=npm run build, ?ㅻ쪟 0)
+4. ?④퀎蹂?而ㅻ컠(feat: 紐⑤뜽/?ㅽ궎留댿넂?쒕퉬?ㅲ넂?쇱슦?맞룹빻?몃·?р넂?뚯뒪???? ?ㅽ깮 怨꾩링?濡?, push 湲덉?
+5. 硫붿씤/A??蹂닿퀬: 蹂寃쏀뙆???덈?寃쎈줈 + ?섎룄 + 鍮뚮뱶寃곌낵
+## 湲덉? (硫붿씤/A媛 ??
+self-review쨌security-review ?몄텧 / PR ?묒꽦쨌?앹꽦 / push / 癒몄? / STATUS.md ?섏젙
+蹂닿퀬 ???湲?(硫붿씤??SendMessage濡?P1 ?쎌뒪 紐낅졊 媛??
 ```
 
-## 구현자 ≠ 리뷰어 (필수)
-구현자와 리뷰어는 **항상 다른 서브에이전트**(자기 코드 자기 리뷰 금지). 리뷰어 호출·픽스 루프는 **메인이 직접 주도**.
+## 援ы쁽????由щ럭??(?꾩닔)
+援ы쁽?먯? 由щ럭?대뒗 **??긽 ?ㅻⅨ ?쒕툕?먯씠?꾪듃**(?먭린 肄붾뱶 ?먭린 由щ럭 湲덉?). 由щ럭???몄텧쨌?쎌뒪 猷⑦봽??**硫붿씤??吏곸젒 二쇰룄**.
 
-| 상황 | 사용 |
+| ?곹솴 | ?ъ슜 |
 |---|---|
-| 픽스 명령(구현자 자기 코드 수정) | `SendMessage(구현 서브)` — 컨텍스트 유지 |
-| 재검토(리뷰어 픽스 검증) | `SendMessage(리뷰어 서브)` — 이전 P1 비교 |
-| 다른 영역 새 작업 / 추가 리뷰어 의견 | `Agent({...})` — 컨텍스트 분리 |
+| ?쎌뒪 紐낅졊(援ы쁽???먭린 肄붾뱶 ?섏젙) | `SendMessage(援ы쁽 ?쒕툕)` ??而⑦뀓?ㅽ듃 ?좎? |
+| ?ш???由щ럭???쎌뒪 寃利? | `SendMessage(由щ럭???쒕툕)` ???댁쟾 P1 鍮꾧탳 |
+| ?ㅻⅨ ?곸뿭 ???묒뾽 / 異붽? 由щ럭???섍껄 | `Agent({...})` ??而⑦뀓?ㅽ듃 遺꾨━ |
 
-픽스 명령을 새 Agent로 보내기 **금지**(표면 픽스만 됨). SendMessage 부재 시 새 prompt에 워크트리 경로+픽스 항목+reviewer 결과 명시.
+?쎌뒪 紐낅졊????Agent濡?蹂대궡湲?**湲덉?**(?쒕㈃ ?쎌뒪留???. SendMessage 遺??????prompt???뚰겕?몃━ 寃쎈줈+?쎌뒪 ??ぉ+reviewer 寃곌낵 紐낆떆.
 
 ---
 
-# 사이클 비용 매트릭스
-| 영역 | 트리거 | 구현자 | reviewer | 검증 게이트 | cap |
+# ?ъ씠??鍮꾩슜 留ㅽ듃由?뒪
+| ?곸뿭 | ?몃━嫄?| 援ы쁽??| reviewer | 寃利?寃뚯씠??| cap |
 |---|---|---|---|---|---|
-| **Critical** | race/분산락/트랜잭션/결제·환불/인증·인가/webhook·멱등성/분산정합성 | opus | code-reviewer opus (+ security-reviewer opus — 보안 트리거 있을 때) | G1/G3.5/G6 의무 | 2회 |
-| **Normal** | 일반 CRUD/컨트롤러+DTO/단순가드/알림/테스트 | sonnet | code-reviewer sonnet 1회 | G1+G6만 | 1회 |
-| **Trivial** | 설정/문서/dead code/import/단순 스키마 변경(ALTER) | sonnet or 메인 | 생략 가능(메타 자체 검수) | 생략 | 0회 |
+| **Critical** | race/遺꾩궛???몃옖??뀡/寃곗젣쨌?섎텋/?몄쬆쨌?멸?/webhook쨌硫깅벑??遺꾩궛?뺥빀??| opus | code-reviewer opus (+ security-reviewer opus ??蹂댁븞 ?몃━嫄??덉쓣 ?? | G1/G3.5/G6 ?섎Т | 2??|
+| **Normal** | ?쇰컲 CRUD/而⑦듃濡ㅻ윭+DTO/?⑥닚媛???뚮┝/?뚯뒪??| sonnet | code-reviewer sonnet 1??| G1+G6留?| 1??|
+| **Trivial** | ?ㅼ젙/臾몄꽌/dead code/import/?⑥닚 ?ㅽ궎留?蹂寃?ALTER) | sonnet or 硫붿씤 | ?앸왂 媛??硫뷀? ?먯껜 寃?? | ?앸왂 | 0??|
 
-**판단 모호 → Critical 우선.** cap 초과 P1 잔존 → PR 분할/후속 이슈/에스컬레이션.
+**?먮떒 紐⑦샇 ??Critical ?곗꽑.** cap 珥덇낵 P1 ?붿〈 ??PR 遺꾪븷/?꾩냽 ?댁뒋/?먯뒪而щ젅?댁뀡.
 
-**모델 배정**: opus=트랜잭션·분산락·도메인모델·보안설계·외부 P1 핫픽스·큰 리팩터링 / sonnet(기본)=TDD·API 계층(컨트롤러/라우트+DTO)·CRUD·마이그레이션·외부연동(WebClient 등)·리스너·일반 reviewer / haiku=체크박스·import·텍스트·라벨·빌드확인(보통 메인 직접).
+**紐⑤뜽 諛곗젙**: opus=?몃옖??뀡쨌遺꾩궛?승룸룄硫붿씤紐⑤뜽쨌蹂댁븞?ㅺ퀎쨌?몃? P1 ?ロ뵿?ㅒ룻겙 由ы뙥?곕쭅 / sonnet(湲곕낯)=TDD쨌API 怨꾩링(而⑦듃濡ㅻ윭/?쇱슦??DTO)쨌CRUD쨌留덉씠洹몃젅?댁뀡쨌?몃??곕룞(WebClient ??쨌由ъ뒪?댟룹씪諛?reviewer / haiku=泥댄겕諛뺤뒪쨌import쨌?띿뒪?맞룸씪踰㉱룸퉴?쒗솗??蹂댄넻 硫붿씤 吏곸젒).
 
 ---
 
-# 검증 게이트 (회귀 차단) — 메타 자체 검수
-메타가 단독 결정하는 지점마다 **자체 검수로 회귀 차단** — 회귀 패턴(stale 단정 / reviewer 결과 임의 격하 / 운영 config 검증 누락 / destructive 미점검) 점검.
+# 寃利?寃뚯씠??(?뚭? 李⑤떒) ??硫뷀? ?먯껜 寃??硫뷀?媛 ?⑤룆 寃곗젙?섎뒗 吏?먮쭏??**?먯껜 寃?섎줈 ?뚭? 李⑤떒** ???뚭? ?⑦꽩(stale ?⑥젙 / reviewer 寃곌낵 ?꾩쓽 寃⑺븯 / ?댁쁺 config 寃利??꾨씫 / destructive 誘몄젏寃) ?먭?.
 
-| 게이트 | 시점 | 검증 항목 |
+| 寃뚯씠??| ?쒖젏 | 寃利???ぉ |
 |---|---|---|
-| **G1** | handoff 작성 직후, B/C 스폰 직전 | 회귀 패턴 / stale / handoff 누락 |
-| **G3.5** | reviewer 종합 직후, P 등급 결정 직전 | P1→P2 격하 정당성 / 후속 분리 근거 |
-| **G6** | PR 머지 직전 | 이전 PR 픽스 회귀 / 운영 config 영향 / destructive SQL 운영데이터 |
+| **G1** | handoff ?묒꽦 吏곹썑, B/C ?ㅽ룿 吏곸쟾 | ?뚭? ?⑦꽩 / stale / handoff ?꾨씫 |
+| **G3.5** | reviewer 醫낇빀 吏곹썑, P ?깃툒 寃곗젙 吏곸쟾 | P1?뭁2 寃⑺븯 ?뺣떦??/ ?꾩냽 遺꾨━ 洹쇨굅 |
+| **G6** | PR 癒몄? 吏곸쟾 | ?댁쟾 PR ?쎌뒪 ?뚭? / ?댁쁺 config ?곹뼢 / destructive SQL ?댁쁺?곗씠??|
 
-- **Phase 흐름(Critical)**: [1]handoff+**G1** → [2]구현 → [3]사후검수(code-reviewer)+**G3.5**(P등급) → [4]P1 픽스(cap2) → [5]재검수 → [6]머지 직전 **G6**.
-- **Normal**: [1]handoff+G1 → [2]구현 → [3]code-reviewer(sonnet) → [4]P1 픽스 → [6]G6.
-- **자동 진행**: 사이클 확정 후 게이트는 AskUserQuestion 없이 즉시 실행, 결과만 보고. **FAIL 시에만** 수정 방향 컨펌. FAIL 무시하고 머지 금지.
+- **Phase ?먮쫫(Critical)**: [1]handoff+**G1** ??[2]援ы쁽 ??[3]?ы썑寃??code-reviewer)+**G3.5**(P?깃툒) ??[4]P1 ?쎌뒪(cap2) ??[5]?ш?????[6]癒몄? 吏곸쟾 **G6**.
+- **Normal**: [1]handoff+G1 ??[2]援ы쁽 ??[3]code-reviewer(sonnet) ??[4]P1 ?쎌뒪 ??[6]G6.
+- **?먮룞 吏꾪뻾**: ?ъ씠???뺤젙 ??寃뚯씠?몃뒗 AskUserQuestion ?놁씠 利됱떆 ?ㅽ뻾, 寃곌낵留?蹂닿퀬. **FAIL ?쒖뿉留?* ?섏젙 諛⑺뼢 而⑦럩. FAIL 臾댁떆?섍퀬 癒몄? 湲덉?.
 
-**게이트 = 메타 자체 검수**(3개 항목 모두 PASS해야 통과): ① stale 정보 ② 이전 PR과 동일 회귀 패턴 재발 ③ handoff 누락 항목. PR 본문에 `G1(자체검수): PASS — 근거 N건` 형식으로 기록.
+**寃뚯씠??= 硫뷀? ?먯껜 寃??*(3媛???ぉ 紐⑤몢 PASS?댁빞 ?듦낵): ??stale ?뺣낫 ???댁쟾 PR怨??숈씪 ?뚭? ?⑦꽩 ?щ컻 ??handoff ?꾨씫 ??ぉ. PR 蹂몃Ц??`G1(?먯껜寃??: PASS ??洹쇨굅 N嫄? ?뺤떇?쇰줈 湲곕줉.
 
 ---
 
-# 표준 템플릿
-
-## PR 본문
+# ?쒖? ?쒗뵆由?
+## PR 蹂몃Ц
 ```markdown
 Closes #N
 
-## 변경 내역
-- …
+## 蹂寃??댁뿭
+- ??
+## ?뵏 Self-Review (code-reviewer ?먮낯 ?붿빟)
+- P1 <嫄댁닔> ???쎌뒪/?붿〈/?꾩냽 遺꾨━ 쨌 P2 <嫄댁닔>
 
-## 🔒 Self-Review (code-reviewer 원본 요약)
-- P1 <건수> → 픽스/잔존/후속 분리 · P2 <건수>
+## ?썳截?Security Review (?대떦 ??
+- P1 <嫄댁닔> ??泥섎━
 
-## 🛡️ Security Review (해당 시)
-- P1 <건수> → 처리
+## ?썳截?寃利?寃뚯씠??(?먯껜 寃??
+- G1: PASS/FAIL ??{洹쇨굅/?섏젙} 쨌 G3.5: PASS/FAIL ??{?섏젙} 쨌 G6: PASS/FAIL ??{?뚭? 寃곌낵}
 
-## 🛡️ 검증 게이트 (자체 검수)
-- G1: PASS/FAIL → {근거/수정} · G3.5: PASS/FAIL → {수정} · G6: PASS/FAIL → {회귀 결과}
-
-## 테스트
-- [x] 테스트 PASS (n/n) — 스택별: Java=./gradlew test · Flask=pytest · Next=npm run build/test
+## ?뚯뒪??- [x] ?뚯뒪??PASS (n/n) ???ㅽ깮蹂? Java=./gradlew test 쨌 Flask=pytest 쨌 Next=npm run build/test
 ```
 
-## 트러블슈팅 코멘트 (머지 직후)
-`gh issue comment {N} --body "…"` — 관련 이슈 없으면 `docs/troubleshooting/*.md`. 수정 커밋 여러 개면 각 해시 기록.
+## ?몃윭釉붿뒋??肄붾찘??(癒몄? 吏곹썑)
+`gh issue comment {N} --body "??` ??愿???댁뒋 ?놁쑝硫?`docs/troubleshooting/*.md`. ?섏젙 而ㅻ컠 ?щ윭 媛쒕㈃ 媛??댁떆 湲곕줉.
 ```markdown
-## 🔧 트러블슈팅 (PR #N 머지)
-**상황**: … **원인**: … **해결**: …(핵심 커밋 해시)
-### Reviewer P1 (Critical 시) — …
-### 후속 이슈 — #N
+## ?뵩 ?몃윭釉붿뒋??(PR #N 癒몄?)
+**?곹솴**: ??**?먯씤**: ??**?닿껐**: ???듭떖 而ㅻ컠 ?댁떆)
+### Reviewer P1 (Critical ?? ????### ?꾩냽 ?댁뒋 ??#N
 ```
 
 ---
 
-# A-B-C 오케스트레이션
-**사용자는 A 세션 하나만 연다.** B(백엔드)·C(프론트)는 A가 스폰하는 **구현 서브**(세션 전환 없음). *(letter A/B/C는 이 섹션 전용 명칭 — 워크트리 워크플로우의 "구현 서브/리뷰어 서브"와 구분.)*
+# A-B-C ?ㅼ??ㅽ듃?덉씠??**?ъ슜?먮뒗 A ?몄뀡 ?섎굹留??곕떎.** B(諛깆뿏??쨌C(?꾨줎????A媛 ?ㅽ룿?섎뒗 **援ы쁽 ?쒕툕**(?몄뀡 ?꾪솚 ?놁쓬). *(letter A/B/C?????뱀뀡 ?꾩슜 紐낆묶 ???뚰겕?몃━ ?뚰겕?뚮줈?곗쓽 "援ы쁽 ?쒕툕/由щ럭???쒕툕"? 援щ텇.)*
 
-| 역할 | 정체 | 책임 | 금지 |
+| ??븷 | ?뺤껜 | 梨낆엫 | 湲덉? |
 |---|---|---|---|
-| **A(메타)** | 사용자가 여는 유일 세션 | 설계·handoff·B·C 스폰·검수·머지·배포·STATUS.md | 코드 직접 작성(예외: 한 줄 픽스·Trivial) |
-| **B/C** | A가 스폰 | 워크트리 구현·테스트·커밋·보고 | 도메인 결정·push·PR·머지·STATUS.md |
+| **A(硫뷀?)** | ?ъ슜?먭? ?щ뒗 ?좎씪 ?몄뀡 | ?ㅺ퀎쨌handoff쨌B쨌C ?ㅽ룿쨌寃?샕룸㉧吏쨌諛고룷쨌STATUS.md | 肄붾뱶 吏곸젒 ?묒꽦(?덉쇅: ??以??쎌뒪쨌Trivial) |
+| **B/C** | A媛 ?ㅽ룿 | ?뚰겕?몃━ 援ы쁽쨌?뚯뒪?맞룹빱諛떷룸낫怨?| ?꾨찓??寃곗젙쨌push쨌PR쨌癒몄?쨌STATUS.md |
 
-**Phase**: 0.설계(A: api-contract.md + STATUS.md + handoff) → 1.구현(A가 B·C 병렬 스폰) → 2.검수·배포(B·C 완료 시 A 자동 검수→PR→머지→배포) → 3.버그수정(A가 fix 서브 스폰). 사용자 행동은 Phase 0의 1줄 지시뿐.
+**Phase**: 0.?ㅺ퀎(A: api-contract.md + STATUS.md + handoff) ??1.援ы쁽(A媛 B쨌C 蹂묐젹 ?ㅽ룿) ??2.寃?샕룸같??B쨌C ?꾨즺 ??A ?먮룞 寃?섃넂PR?믩㉧吏?믩같?? ??3.踰꾧렇?섏젙(A媛 fix ?쒕툕 ?ㅽ룿). ?ъ슜???됰룞? Phase 0??1以?吏?쒕퓧.
 
-**A의 B·C 스폰**: `Agent({ subagent_type:"general-purpose", model:"sonnet"(Critical=opus), run_in_background:true, isolation:"worktree", prompt:"docs/handoff/{영역}-next.md 읽고 작업. 워크트리:{path}, 브랜치:{역할}/{N}-{내용}" + [서브 책임 블록] })`. 완료 알림 → A 검수 → push+PR+머지+배포.
+**A??B쨌C ?ㅽ룿**: `Agent({ subagent_type:"general-purpose", model:"sonnet"(Critical=opus), run_in_background:true, isolation:"worktree", prompt:"docs/handoff/{?곸뿭}-next.md ?쎄퀬 ?묒뾽. ?뚰겕?몃━:{path}, 釉뚮옖移?{??븷}/{N}-{?댁슜}" + [?쒕툕 梨낆엫 釉붾줉] })`. ?꾨즺 ?뚮┝ ??A 寃????push+PR+癒몄?+諛고룷.
 
-**진행 확인**: 사용자가 A에 "백엔드 현황?" → A가 워크트리 git log+변경파일 요약(B·C 단계별 커밋이라 추적 가능).
+**吏꾪뻾 ?뺤씤**: ?ъ슜?먭? A??"諛깆뿏???꾪솴?" ??A媛 ?뚰겕?몃━ git log+蹂寃쏀뙆???붿빟(B쨌C ?④퀎蹂?而ㅻ컠?대씪 異붿쟻 媛??.
 
-**A 검수 기준**(B·C 완료 후): api-contract.md 스펙 일치 · ErrorCode 준수 · 빌드/테스트 PASS 재확인 · code-reviewer 호출(사이클 매트릭스) · 머지 순서 백엔드→프론트.
+**A 寃??湲곗?**(B쨌C ?꾨즺 ??: api-contract.md ?ㅽ럺 ?쇱튂 쨌 ErrorCode 以??쨌 鍮뚮뱶/?뚯뒪??PASS ?ы솗??쨌 code-reviewer ?몄텧(?ъ씠??留ㅽ듃由?뒪) 쨌 癒몄? ?쒖꽌 諛깆뿏?쒋넂?꾨줎??
 
-**버그 수정 스폰**: `Agent(prompt: 버그/재현/예상원인(파일:라인)/최소수정범위 + "수정 후 기존 테스트 PASS, 워크트리 커밋·보고, push/PR/머지 금지")`.
+**踰꾧렇 ?섏젙 ?ㅽ룿**: `Agent(prompt: 踰꾧렇/?ы쁽/?덉긽?먯씤(?뚯씪:?쇱씤)/理쒖냼?섏젙踰붿쐞 + "?섏젙 ??湲곗〈 ?뚯뒪??PASS, ?뚰겕?몃━ 而ㅻ컠쨌蹂닿퀬, push/PR/癒몄? 湲덉?")`.
 
-## 매체별 역할
-| 매체 | 자동로드 | 용도 | 갱신 |
+## 留ㅼ껜蹂???븷
+| 留ㅼ껜 | ?먮룞濡쒕뱶 | ?⑸룄 | 媛깆떊 |
 |---|---|---|---|
-| `CLAUDE.md` | ✅ | 영구 룰 | 룰 변경 시 |
-| `docs/STATUS.md` | ❌ 명시 | 인프라·머지·다음작업 | **A만**(매 머지 후) |
-| `docs/api-contract.md` | ❌ 명시 | API 단일진실 | **A만**(Phase 0+변경) |
-| `docs/handoff/*.md` | ❌ | A→B·C 지시 | A 작성, 완료 후 `archive/` |
-| GitHub 이슈/PR | ❌(`gh`) | 단위작업+트러블슈팅 | B·C 생성, A 머지 |
+| `CLAUDE.md` | ??| ?곴뎄 猷?| 猷?蹂寃???|
+| `docs/STATUS.md` | ??紐낆떆 | ?명봽?셋룸㉧吏쨌?ㅼ쓬?묒뾽 | **A留?*(留?癒몄? ?? |
+| `docs/api-contract.md` | ??紐낆떆 | API ?⑥씪吏꾩떎 | **A留?*(Phase 0+蹂寃? |
+| `docs/handoff/*.md` | ??| A?묪쨌C 吏??| A ?묒꽦, ?꾨즺 ??`archive/` |
+| GitHub ?댁뒋/PR | ??`gh`) | ?⑥쐞?묒뾽+?몃윭釉붿뒋??| B쨌C ?앹꽦, A 癒몄? |
 
-## 자동 생성 규칙
-- **STATUS.md** (Phase 0서 없으면 A가 즉시 생성). 위치: 단일레포 `<root>/docs/`, 멀티레포 `<workspace>/docs/`(A 통합). 섹션: 마지막 갱신일 / 인프라 표 / 마지막 머지 PR / 다음 작업(P0·P1·P2 체크리스트) / 알려진 이슈 표.
-- **api-contract.md** (Phase 0서 양쪽 영향 모델 결정 시). 섹션: 인증모델 / 핵심 엔드포인트 표 / DTO 스키마 / ErrorCode 체계 / 환경변수·CORS. **변경=A만**; B·C 필요 시 PR에 `[CONTRACT-CHANGE-REQUEST]` 표시+보류 → A가 contract 갱신+handoff 재발행 → B·C 재개.
+## ?먮룞 ?앹꽦 洹쒖튃
+- **STATUS.md** (Phase 0???놁쑝硫?A媛 利됱떆 ?앹꽦). ?꾩튂: ?⑥씪?덊룷 `<root>/docs/`, 硫?곕젅??`<workspace>/docs/`(A ?듯빀). ?뱀뀡: 留덉?留?媛깆떊??/ ?명봽????/ 留덉?留?癒몄? PR / ?ㅼ쓬 ?묒뾽(P0쨌P1쨌P2 泥댄겕由ъ뒪?? / ?뚮젮吏??댁뒋 ??
+- **api-contract.md** (Phase 0???묒そ ?곹뼢 紐⑤뜽 寃곗젙 ??. ?뱀뀡: ?몄쬆紐⑤뜽 / ?듭떖 ?붾뱶?ъ씤????/ DTO ?ㅽ궎留?/ ErrorCode 泥닿퀎 / ?섍꼍蹂?샕텰ORS. **蹂寃?A留?*; B쨌C ?꾩슂 ??PR??`[CONTRACT-CHANGE-REQUEST]` ?쒖떆+蹂대쪟 ??A媛 contract 媛깆떊+handoff ?щ컻????B쨌C ?ш컻.
 
-## handoff 템플릿
-- **{영역}-next.md**(신규): 이슈 #N·제목 / 사이클(Critical·Normal·Trivial) / 구현 범위 / contract 참조 §섹션 / 완료기준(빌드/테스트 PASS·단계별 커밋·A 보고 후 대기).
-- **{영역}-fix-{N}.md**(버그): 현상 1줄 / 재현(요청·응답) / 예상 원인(파일:라인) / 최소 수정범위 / 완료기준(정상 동작·기존 테스트 PASS·A 보고 후 대기).
+## handoff ?쒗뵆由?- **{?곸뿭}-next.md**(?좉퇋): ?댁뒋 #N쨌?쒕ぉ / ?ъ씠??Critical쨌Normal쨌Trivial) / 援ы쁽 踰붿쐞 / contract 李몄“ 짠?뱀뀡 / ?꾨즺湲곗?(鍮뚮뱶/?뚯뒪??PASS쨌?④퀎蹂?而ㅻ컠쨌A 蹂닿퀬 ???湲?.
+- **{?곸뿭}-fix-{N}.md**(踰꾧렇): ?꾩긽 1以?/ ?ы쁽(?붿껌쨌?묐떟) / ?덉긽 ?먯씤(?뚯씪:?쇱씤) / 理쒖냼 ?섏젙踰붿쐞 / ?꾨즺湲곗?(?뺤긽 ?숈옉쨌湲곗〈 ?뚯뒪??PASS쨌A 蹂닿퀬 ???湲?.
+

@@ -31,10 +31,12 @@ try:
     import torch
     from transformers import CLIPModel, CLIPProcessor
     CLIP_AVAILABLE = True
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 except ImportError:
     print("[경고] torch/transformers 미설치 → Stage 3 (CLIP) 건너뜀")
     print("       pip install -r data/requirements_filter.txt 로 설치 가능")
     CLIP_AVAILABLE = False
+    DEVICE = "cpu"
 
 # ── 설정 ──────────────────────────────────────────────────────────
 RAW_DIR      = Path(__file__).parent / "raw"
@@ -44,27 +46,40 @@ MIN_RESOLUTION  = 200      # 가로·세로 최소 px
 MIN_FILE_SIZE   = 5_000    # 최소 파일 크기 (bytes)
 BLUR_THRESHOLD  = 50.0     # Laplacian 분산 (낮을수록 흐림)
 HASH_MAX_DIST   = 8        # phash 해밍 거리 (낮을수록 엄격)
-CLIP_THRESHOLD  = 0.0      # (생물 점수 - 조리 점수) 최소 마진
+CLIP_THRESHOLD  = 0.15     # (생물 점수 - 비생물 점수) 최소 마진 (0.0→0.15 강화)
 
 WHOLE_PROMPTS = [
     "a photo of a whole fresh raw fish",
     "a whole live fish at fish market",
     "a raw uncooked whole fish",
+    "a complete fish with scales and fins",
+    "a fresh fish laid on ice at seafood market",
 ]
 COOKED_PROMPTS = [
+    # 조리·손질
     "grilled fish food on plate",
     "fish sashimi dish",
     "cooked fish meal",
     "sliced fish fillet",
     "fish soup stew",
     "fish served as food",
+    "dried salted fish",
+    "fish skeleton or fish bones",
+    # 완전 무관 — 사물·배경·사람
+    "a fishing rod and fishing equipment",
+    "a person holding a fish",
+    "a fishing spot landscape or river scenery",
+    "a fish in an aquarium tank",
+    "a restaurant menu board",
+    "a cartoon illustration or drawing of fish",
+    "fish food pellets or fish feed",
 ]
 # ──────────────────────────────────────────────────────────────────
 
 
 def load_clip():
-    print("[Stage 3] CLIP 모델 로딩 중 (최초 1회 다운로드 ~350MB)...")
-    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+    print(f"[Stage 3] CLIP 모델 로딩 중 (device={DEVICE})...")
+    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(DEVICE)
     proc  = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
     model.eval()
     return model, proc
@@ -73,9 +88,10 @@ def load_clip():
 def clip_is_whole_fish(img: Image.Image, model, proc) -> tuple[bool, float]:
     all_prompts = WHOLE_PROMPTS + COOKED_PROMPTS
     inputs = proc(text=all_prompts, images=img, return_tensors="pt", padding=True)
+    inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
     with torch.no_grad():
         logits = model(**inputs).logits_per_image[0]
-        probs = logits.softmax(dim=0).numpy()
+        probs = logits.softmax(dim=0).cpu().numpy()
 
     whole_score = float(probs[:len(WHOLE_PROMPTS)].max())
     cooked_score = float(probs[len(WHOLE_PROMPTS):].max())
@@ -199,7 +215,7 @@ def main():
     print("FishCheck 자동 검수 시작")
     print(f"  Stage 1: 기본 품질 (해상도 {MIN_RESOLUTION}px / 블러 / 손상)")
     print(f"  Stage 2: 중복 제거 (phash 거리 ≤ {HASH_MAX_DIST})")
-    print(f"  Stage 3: CLIP {'✅' if CLIP_AVAILABLE else '⚠️ 건너뜀 (설치 필요)'}")
+    print(f"  Stage 3: CLIP {'OK (' + DEVICE + ')' if CLIP_AVAILABLE else 'SKIP (설치 필요)'}")
     print("=" * 60)
 
     total = {"total": 0, "pass": 0, "quality": 0, "duplicate": 0, "clip": 0}
@@ -215,7 +231,7 @@ def main():
     print(f"  탈락 품질: {total['quality']}장")
     print(f"  탈락 중복: {total['duplicate']}장")
     print(f"  탈락 CLIP: {total['clip']}장")
-    print(f"\n탈락 이미지는 data/rejected/ 에 보관됨 (삭제 아님 — 직접 확인 가능)")
+    print(f"\n탈락 이미지는 data/rejected/ 에 보관됨 (삭제 아님 - 직접 확인 가능)")
     print("검수 완료 후 data/raw/ 를 Google Drive 에 업로드하세요.")
 
 
