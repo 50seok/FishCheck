@@ -43,9 +43,8 @@ img: Image.Image | None = None
 
 with tab_upload:
     uploaded = st.file_uploader(
-        "생선 사진을 업로드하세요 (jpg / png / webp만 가능)",
-        type=["jpg", "jpeg", "png", "webp"],
-        help="jpg, png, webp 형식의 이미지만 업로드 가능합니다. 다른 파일은 분석되지 않습니다.",
+        "생선 사진을 업로드하세요 (jpg / png / webp)",
+        help="jpg, png, webp 형식의 이미지만 분석됩니다.",
     )
     if uploaded:
         allowed_mime = {"image/jpeg", "image/png", "image/webp"}
