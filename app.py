@@ -48,15 +48,19 @@ with tab_upload:
         help="전체 체형이 보이는 통 생선 사진을 올려주세요",
     )
     if uploaded:
-        try:
-            img = Image.open(uploaded)
-            img.verify()
-            uploaded.seek(0)
-            img = Image.open(uploaded)
-            st.image(img, caption="업로드된 이미지", use_container_width=True)
-        except Exception:
-            st.error("이미지 파일만 업로드할 수 있습니다.")
-            img = None
+        allowed_mime = {"image/jpeg", "image/png", "image/webp"}
+        if uploaded.type not in allowed_mime:
+            st.error("jpg / png / webp 이미지 파일만 업로드할 수 있습니다.")
+        else:
+            try:
+                img = Image.open(uploaded)
+                img.verify()
+                uploaded.seek(0)
+                img = Image.open(uploaded)
+                st.image(img, caption="업로드된 이미지", use_container_width=True)
+            except Exception:
+                st.error("손상된 이미지 파일입니다. 다른 사진을 사용해 주세요.")
+                img = None
 
 with tab_camera:
     shot = st.camera_input("카메라로 생선을 찍어주세요")
