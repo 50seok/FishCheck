@@ -98,5 +98,5 @@ if img is not None:
                 for det in result["top3"]:
                     st.progress(det["confidence"], text=f"{det['class_ko']}  {det['confidence']*100:.1f}%")
 
-        if confidence < 0.5:
-            st.error("신뢰도가 낮습니다 (50% 미만). 전체 체형이 잘 보이는 통 생선 사진으로 다시 시도해 주세요.")
+        if confidence < 0.7:
+            st.warning("신뢰도가 낮습니다. 전체 체형이 잘 보이는 통 생선 사진으로 다시 시도해 주세요.")

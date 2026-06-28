@@ -48,7 +48,7 @@ def load_model() -> YOLO:
 
 def predict(img: Image.Image) -> dict:
     model   = load_model()
-    results = model(img, verbose=False)
+    results = model(img, verbose=False, conf=0.65)
     result  = results[0]
 
     if result.boxes is None or len(result.boxes) == 0:
