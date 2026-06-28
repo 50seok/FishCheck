@@ -48,8 +48,15 @@ with tab_upload:
         help="전체 체형이 보이는 통 생선 사진을 올려주세요",
     )
     if uploaded:
-        img = Image.open(uploaded)
-        st.image(img, caption="업로드된 이미지", use_container_width=True)
+        try:
+            img = Image.open(uploaded)
+            img.verify()
+            uploaded.seek(0)
+            img = Image.open(uploaded)
+            st.image(img, caption="업로드된 이미지", use_container_width=True)
+        except Exception:
+            st.error("이미지 파일만 업로드할 수 있습니다.")
+            img = None
 
 with tab_camera:
     shot = st.camera_input("카메라로 생선을 찍어주세요")
