@@ -34,7 +34,7 @@ CLASS_KO = {
 
 # 어종별 테스트 이미지 2장씩
 TEST_IMAGES = {
-    "bangeo":  ["data/raw/bangeo/bangeo_0055.jpg",  "data/raw/bangeo/bangeo_0068.jpg"],
+    "bangeo":  ["data/raw/bangeo/bangeo_0055.jpg",  "data/raw/bangeo/bangeo_0069.jpg"],
     "bushiri": ["data/raw/bushiri/bushiri_0031.jpg", "data/raw/bushiri/bushiri_0034.jpg"],
     "gwangeo": ["data/raw/gwangeo/gwangeo_0065.jpg", "data/raw/gwangeo/gwangeo_0066.jpg"],
     "gajami":  ["data/raw/gajami/gajami_0077.jpg",  "data/raw/gajami/gajami_0079.jpg"],

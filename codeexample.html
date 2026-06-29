@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FishCheck — YOLO &amp; Roboflow 코드 분석</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --bg2: #1a1d27;
+      --bg3: #23273a;
+      --accent: #4f8ef7;
+      --accent2: #7c3aed;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --pink: #ec4899;
+      --cyan: #06b6d4;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --border: #2d3248;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1e2235 0%, #16192b 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 2rem 2.5rem;
+    }
+    header .badge {
+      display: inline-block;
+      background: var(--accent2);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      padding: .25rem .6rem;
+      border-radius: 99px;
+      margin-bottom: .75rem;
+    }
+    header h1 { font-size: 1.8rem; font-weight: 700; }
+    header h1 span { color: var(--accent); }
+    header p { color: var(--muted); margin-top: .4rem; font-size: .95rem; }
+
+    /* ── Layout ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 2rem 2.5rem; }
+
+    /* ── Flow diagram ── */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      flex-wrap: wrap;
+      margin-bottom: 2.5rem;
+      padding: 1.25rem 1.5rem;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .flow-step {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      padding: .4rem .9rem;
+      border-radius: 8px;
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .flow-arrow { color: var(--muted); font-size: 1.1rem; }
+
+    /* ── Section blocks ── */
+    .section {
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .9rem 1.4rem;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+    }
+    .section-num {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: .75rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .section-title {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .section-line {
+      margin-left: auto;
+      font-size: .75rem;
+      color: var(--muted);
+      font-family: monospace;
+    }
+
+    /* ── Code + annotation layout ── */
+    .code-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width: 760px) {
+      .code-body { grid-template-columns: 1fr; }
+    }
+    .code-pane {
+      background: #0d1117;
+      padding: 1.2rem 1.5rem;
+      overflow-x: auto;
+      border-right: 1px solid var(--border);
+    }
+    .code-pane pre {
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: .82rem;
+      line-height: 1.8;
+    }
+    .annotation-pane {
+      padding: 1.2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+    }
+    .note {
+      display: flex;
+      gap: .6rem;
+      font-size: .85rem;
+      line-height: 1.55;
+    }
+    .note-icon {
+      flex-shrink: 0;
+      width: 20px; height: 20px;
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem;
+      margin-top: 1px;
+    }
+    .note-icon.info  { background: rgba(79,142,247,.2); color: var(--accent); }
+    .note-icon.ok    { background: rgba(34,197,94,.2);  color: var(--green); }
+    .note-icon.warn  { background: rgba(245,158,11,.2); color: var(--yellow); }
+    .note-icon.key   { background: rgba(124,58,237,.2); color: var(--accent2); }
+
+    /* ── Syntax colors ── */
+    .k  { color: #c792ea; }   /* keyword */
+    .fn { color: #82aaff; }   /* function */
+    .st { color: #c3e88d; }   /* string */
+    .cm { color: #546e7a; font-style: italic; } /* comment */
+    .nm { color: #f78c6c; }   /* number */
+    .cl { color: #ffcb6b; }   /* class/decorator */
+    .op { color: #89ddff; }   /* operator / symbol */
+    .va { color: var(--text); } /* variable */
+    .bi { color: #80cbc4; }   /* builtin */
+
+    /* ── Highlight line ── */
+    .hl { background: rgba(79,142,247,.12); border-left: 3px solid var(--accent); padding-left: 5px; margin-left: -8px; display: block; }
+
+    /* ── Summary table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .85rem;
+      margin-top: 1.5rem;
+    }
+    th {
+      background: var(--bg2);
+      padding: .65rem 1rem;
+      text-align: left;
+      font-weight: 700;
+      color: var(--accent);
+      border-bottom: 2px solid var(--border);
+    }
+    td {
+      padding: .6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    code {
+      font-family: 'Cascadia Code', monospace;
+      font-size: .8rem;
+      background: var(--bg3);
+      padding: .1rem .35rem;
+      border-radius: 4px;
+      color: var(--cyan);
+    }
+
+    /* ── Tab nav ── */
+    .tab-nav {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 1.75rem;
+    }
+    .tab-btn {
+      padding: .6rem 1.4rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      color: var(--muted);
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .tab-btn:hover { color: var(--text); border-color: var(--accent); }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+  </style>
+  <script>
+    function showTab(name) {
+      document.getElementById('tab-yolo').style.display      = name === 'yolo'      ? '' : 'none';
+      document.getElementById('tab-roboflow').style.display  = name === 'roboflow'  ? '' : 'none';
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', (name === 'yolo' && i === 0) || (name === 'roboflow' && i === 1));
+      });
+    }
+  </script>
+</head>
+<body>
+
+<header>
+  <div class="badge">YOLOv8 · Roboflow · Ultralytics · Streamlit</div>
+  <h1>FishCheck <span>YOLO &amp; Roboflow 코드 분석</span></h1>
+  <p>notebooks/train_fishcheck.ipynb · src/model.py — 라인바이라인 주석 &amp; 동작 원리</p>
+</header>
+
+<div class="container">
+
+  <!-- Tab nav -->
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="showTab('yolo')">🎯 YOLO 추론 (model.py)</button>
+    <button class="tab-btn" onclick="showTab('roboflow')">📦 Roboflow 학습 파이프라인</button>
+  </div>
+
+  <!-- ══════════════ YOLO TAB ══════════════ -->
+  <div id="tab-yolo">
+
+  <!-- Flow -->
+  <div class="flow">
+    <div class="flow-step">📷 이미지 입력</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">🔄 YOLO 640px 추론</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">🎯 conf 0.65 필터</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">🚫 bangeo/bushiri 제거</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">📊 신뢰도순 정렬</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">✅ 결과 반환</div>
+  </div>
+
+  <!-- 1. 임포트 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div class="section-title">임포트 &amp; 의존성</div>
+      <div class="section-line">Line 1–6</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="k">import</span> <span class="va">os</span>
+<span class="k">from</span> <span class="va">pathlib</span> <span class="k">import</span> <span class="cl">Path</span>
+
+<span class="k">import</span> <span class="va">streamlit</span> <span class="k">as</span> <span class="va">st</span>
+<span class="k">from</span> <span class="va">PIL</span> <span class="k">import</span> <span class="cl">Image</span>
+<span class="hl"><span class="k">from</span> <span class="va">ultralytics</span> <span class="k">import</span> <span class="cl">YOLO</span></span>
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon key">★</div><div><strong>ultralytics.YOLO</strong> — YOLOv8 공식 패키지. 이 클래스 하나로 모델 로딩·추론·시각화 전부 처리</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>PIL.Image</code> 직접 지원 — numpy 변환 없이 바로 추론 가능</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>pathlib.Path</code> — 운영체제 무관한 파일 경로 처리</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 설정 상수 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div class="section-title">설정 상수 &amp; 클래스 정의</div>
+      <div class="section-line">Line 8–33</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="va">MODEL_PATH</span> <span class="op">=</span> <span class="st">"models/best.pt"</span>
+<span class="va">HF_REPO_ID</span> <span class="op">=</span> <span class="bi">os</span><span class="op">.</span><span class="fn">getenv</span>(<span class="st">"HF_REPO_ID"</span>, <span class="st">""</span>)
+
+<span class="hl"><span class="va">SKIP_CLASSES</span> <span class="op">=</span> {<span class="st">"bangeo"</span>, <span class="st">"bushiri"</span>}</span>
+
+<span class="va">CLASS_KO</span> <span class="op">=</span> {
+    <span class="st">"gajami"</span> <span class="op">:</span> <span class="st">"가자미/도다리"</span>,
+    <span class="st">"gwangeo"</span><span class="op">:</span> <span class="st">"광어"</span>,
+}
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon info">i</div><div><code>best.pt</code> — Ultralytics 학습 결과물. <code>runs/detect/train/weights/</code>에서 복사한 최적 가중치</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>HF_REPO_ID</code> — 환경변수 미설정 시 빈 문자열 → 로컬 파일 우선 사용</div></div>
+        <div class="note"><div class="note-icon warn">!</div><div><strong>SKIP_CLASSES</strong> — 모델은 4클래스(광어·가자미·방어·부시리)로 학습됐지만 현재 서비스는 2종만 운영. 방어·부시리 탐지 결과를 예측 단계에서 제거</div></div>
+        <div class="note"><div class="note-icon ok">✓</div><div><code>CLASS_KO</code> — 영문 클래스명 → 한국어 변환 매핑</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 모델 로더 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div class="section-title">모델 로더 — 캐싱 &amp; 자동 다운로드</div>
+      <div class="section-line">Line 36–46</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="hl"><span class="cl">@st.cache_resource</span>(<span class="va">show_spinner</span><span class="op">=</span><span class="st">"모델 로딩 중..."</span>)</span>
+<span class="k">def</span> <span class="fn">load_model</span>() <span class="op">-&gt;</span> <span class="cl">YOLO</span>:
+    <span class="hl"><span class="k">if not</span> <span class="cl">Path</span>(<span class="va">MODEL_PATH</span>)<span class="op">.</span><span class="fn">exists</span>():</span>
+        <span class="k">if not</span> <span class="va">HF_REPO_ID</span>:
+            <span class="k">raise</span> <span class="cl">FileNotFoundError</span>(...)
+        <span class="k">from</span> <span class="va">huggingface_hub</span> <span class="k">import</span> <span class="fn">hf_hub_download</span>
+        <span class="cl">Path</span>(<span class="va">MODEL_PATH</span>)<span class="op">.</span><span class="va">parent</span><span class="op">.</span><span class="fn">mkdir</span>(
+            <span class="va">parents</span><span class="op">=</span><span class="k">True</span>, <span class="va">exist_ok</span><span class="op">=</span><span class="k">True</span>
+        )
+        <span class="fn">hf_hub_download</span>(
+            <span class="va">repo_id</span><span class="op">=</span><span class="va">HF_REPO_ID</span>,
+            <span class="va">filename</span><span class="op">=</span><span class="st">"best.pt"</span>,
+            <span class="va">local_dir</span><span class="op">=</span><span class="st">"models"</span>
+        )
+    <span class="k">return</span> <span class="cl">YOLO</span>(<span class="va">MODEL_PATH</span>)
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon key">★</div><div><strong>@st.cache_resource</strong> — 반환값(YOLO 객체)을 서버 메모리에 고정. 페이지 새로고침·여러 사용자 접속 시에도 모델을 1회만 로딩</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>Path(...).exists()</code> — 로컬 파일 먼저 확인 → 없을 때만 HF Hub 다운로드. 서버 재시작 시 중복 다운로드 방지</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>hf_hub_download</code> — <code>HF_REPO_ID/best.pt</code>를 <code>models/</code>에 저장. Streamlit Cloud 환경에서 Git LFS 없이 모델 배포 가능</div></div>
+        <div class="note"><div class="note-icon ok">✓</div><div><code>return YOLO(MODEL_PATH)</code> — .pt 가중치를 GPU/CPU에 올려 추론 준비 완료</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 추론 진입 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div class="section-title">추론 실행 — YOLO 호출</div>
+      <div class="section-line">Line 49–55</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="k">def</span> <span class="fn">predict</span>(<span class="va">img</span><span class="op">:</span> <span class="cl">Image.Image</span>) <span class="op">-&gt;</span> <span class="bi">dict</span>:
+    <span class="va">model</span>   <span class="op">=</span> <span class="fn">load_model</span>()
+    <span class="hl"><span class="va">results</span> <span class="op">=</span> <span class="va">model</span>(<span class="va">img</span>, <span class="va">verbose</span><span class="op">=</span><span class="k">False</span>, <span class="va">conf</span><span class="op">=</span><span class="nm">0.65</span>)</span>
+    <span class="va">result</span>  <span class="op">=</span> <span class="va">results</span>[<span class="nm">0</span>]
+
+    <span class="k">if</span> <span class="va">result</span><span class="op">.</span><span class="va">boxes</span> <span class="k">is None or</span> <span class="bi">len</span>(<span class="va">result</span><span class="op">.</span><span class="va">boxes</span>) <span class="op">==</span> <span class="nm">0</span><span class="op">:</span>
+        <span class="k">return</span> {<span class="st">"detected"</span><span class="op">:</span> <span class="k">False</span>, ...}
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon key">★</div><div><strong>model(img)</strong> — PIL Image를 직접 전달. Ultralytics 내부에서 <strong>640×640 리사이즈 + 정규화</strong>를 자동 처리 (별도 전처리 불필요)</div></div>
+        <div class="note"><div class="note-icon warn">!</div><div><code>conf=0.65</code> — NMS 이전 신뢰도 임계값. 65% 미만 바운딩 박스는 즉시 폐기. 이전 0.5에서 상향해 오탐 감소</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>results[0]</code> — 배치 추론 지원 구조라 리스트 반환. 단일 이미지이므로 인덱스 0만 사용</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>result.boxes is None</code> — 탐지 결과가 없을 때 조기 반환. <code>detected: False</code>로 UI에 "판별 불가" 표시</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 박스 필터링 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div class="section-title">바운딩 박스 필터링 &amp; 정렬</div>
+      <div class="section-line">Line 57–61</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="va">boxes</span> <span class="op">=</span> <span class="bi">sorted</span>(
+    [
+        {
+            <span class="st">"cls"</span><span class="op">:</span>  <span class="bi">int</span>(<span class="va">b</span><span class="op">.</span><span class="va">cls</span>[<span class="nm">0</span>]),
+            <span class="st">"conf"</span><span class="op">:</span> <span class="bi">float</span>(<span class="va">b</span><span class="op">.</span><span class="va">conf</span>[<span class="nm">0</span>]),
+        }
+        <span class="k">for</span> <span class="va">b</span> <span class="k">in</span> <span class="va">result</span><span class="op">.</span><span class="va">boxes</span>
+        <span class="hl"><span class="k">if</span> <span class="va">result</span><span class="op">.</span><span class="va">names</span>[<span class="bi">int</span>(<span class="va">b</span><span class="op">.</span><span class="va">cls</span>[<span class="nm">0</span>])] <span class="k">not in</span> <span class="va">SKIP_CLASSES</span></span>
+    ],
+    <span class="va">key</span><span class="op">=</span><span class="k">lambda</span> <span class="va">x</span><span class="op">:</span> <span class="va">x</span>[<span class="st">"conf"</span>],
+    <span class="va">reverse</span><span class="op">=</span><span class="k">True</span>,
+)
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon info">i</div><div><code>b.cls[0]</code> — 박스의 클래스 인덱스 (PyTorch 텐서). <code>int()</code>로 파이썬 정수 변환 필요</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>b.conf[0]</code> — 해당 박스 신뢰도 0.0~1.0 (텐서 → <code>float()</code> 변환)</div></div>
+        <div class="note"><div class="note-icon key">★</div><div><code>result.names[cls_idx]</code> — 클래스 인덱스를 문자열로 변환 후 <code>SKIP_CLASSES</code>와 비교. 방어·부시리 박스를 리스트 컴프리헨션 단계에서 제거</div></div>
+        <div class="note"><div class="note-icon ok">✓</div><div><code>sorted(..., reverse=True)</code> — 신뢰도 내림차순 정렬 → 첫 번째 요소가 최고 신뢰도 박스</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. 최고 박스 선택 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div class="section-title">최고 신뢰도 박스 선택</div>
+      <div class="section-line">Line 66–69</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="hl"><span class="va">best</span>       <span class="op">=</span> <span class="va">boxes</span>[<span class="nm">0</span>]</span>
+<span class="va">class_en</span>   <span class="op">=</span> <span class="va">result</span><span class="op">.</span><span class="va">names</span>[<span class="va">best</span>[<span class="st">"cls"</span>]]
+<span class="va">class_ko</span>   <span class="op">=</span> <span class="va">CLASS_KO</span><span class="op">.</span><span class="fn">get</span>(<span class="va">class_en</span>, <span class="va">class_en</span>)
+<span class="va">confidence</span> <span class="op">=</span> <span class="va">best</span>[<span class="st">"conf"</span>]
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon ok">✓</div><div><code>boxes[0]</code> — 정렬 후 첫 번째 = 신뢰도 가장 높은 박스를 최종 예측으로 선택</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>result.names[...]</code> — 모델의 클래스 이름 딕셔너리. 예: <code>{0: "gajami", 1: "gwangeo"}</code></div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>CLASS_KO.get(class_en, class_en)</code> — 매핑 없는 클래스면 영문 그대로 반환 (방어선)</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Top3 중복 제거 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <div class="section-title">Top3 후보 — 중복 제거</div>
+      <div class="section-line">Line 71–79</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="va">seen</span>  <span class="op">=</span> <span class="bi">set</span>()
+<span class="va">top3</span>  <span class="op">=</span> []
+<span class="k">for</span> <span class="va">b</span> <span class="k">in</span> <span class="va">boxes</span><span class="op">:</span>
+    <span class="va">name</span> <span class="op">=</span> <span class="va">result</span><span class="op">.</span><span class="va">names</span>[<span class="va">b</span>[<span class="st">"cls"</span>]]
+    <span class="hl"><span class="k">if</span> <span class="va">name</span> <span class="k">not in</span> <span class="va">seen</span><span class="op">:</span></span>
+        <span class="va">seen</span><span class="op">.</span><span class="fn">add</span>(<span class="va">name</span>)
+        <span class="va">top3</span><span class="op">.</span><span class="fn">append</span>({
+            <span class="st">"class_en"</span> <span class="op">:</span> <span class="va">name</span>,
+            <span class="st">"class_ko"</span> <span class="op">:</span> <span class="va">CLASS_KO</span><span class="op">.</span><span class="fn">get</span>(<span class="va">name</span>, <span class="va">name</span>),
+            <span class="st">"confidence"</span><span class="op">:</span> <span class="va">b</span>[<span class="st">"conf"</span>],
+        })
+    <span class="k">if</span> <span class="bi">len</span>(<span class="va">top3</span>) <span class="op">==</span> <span class="nm">3</span><span class="op">:</span>
+        <span class="k">break</span>
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon info">i</div><div>같은 어종이 여러 곳에서 탐지되면 박스가 여러 개 생성됨. <code>seen</code> 셋으로 클래스별 중복을 제거</div></div>
+        <div class="note"><div class="note-icon ok">✓</div><div>이미 신뢰도 내림차순 정렬이므로 각 클래스의 <strong>최고 신뢰도 박스</strong>가 자동으로 선택됨</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>len(top3) == 3</code> 에서 조기 종료 — 최대 3종 후보만 수집</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. 반환 & 시각화 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">8</div>
+      <div class="section-title">결과 반환 &amp; 바운딩 박스 시각화</div>
+      <div class="section-line">Line 81–88</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="k">return</span> {
+    <span class="st">"detected"</span>       <span class="op">:</span> <span class="k">True</span>,
+    <span class="st">"class_en"</span>       <span class="op">:</span> <span class="va">class_en</span>,
+    <span class="st">"class_ko"</span>       <span class="op">:</span> <span class="va">class_ko</span>,
+    <span class="st">"confidence"</span>     <span class="op">:</span> <span class="va">confidence</span>,
+    <span class="st">"top3"</span>           <span class="op">:</span> <span class="va">top3</span>,
+    <span class="hl"><span class="st">"annotated_image"</span><span class="op">:</span> <span class="va">result</span><span class="op">.</span><span class="fn">plot</span>(),</span>
+}
+
+<span class="cm"># app.py에서 BGR→RGB 변환 후 표시</span>
+<span class="va">st</span><span class="op">.</span><span class="fn">image</span>(<span class="va">ann</span>[..., <span class="op">::-</span><span class="nm">1</span>], ...)
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon key">★</div><div><code>result.plot()</code> — Ultralytics 내장 시각화. 원본 이미지에 바운딩 박스 + 클래스명 + 신뢰도를 그린 <strong>numpy 배열(BGR 포맷)</strong> 반환</div></div>
+        <div class="note"><div class="note-icon warn">!</div><div><code>[..., ::-1]</code> — OpenCV(BGR) → PIL/Streamlit(RGB) 채널 순서 변환. 슬라이싱으로 R·B 채널 스왑</div></div>
+        <div class="note"><div class="note-icon ok">✓</div><div>dict 구조로 반환해 app.py에서 <code>result["confidence"]</code> 등 키로 직접 접근</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YOLO 요약 테이블 -->
+  <table>
+    <thead>
+      <tr>
+        <th>구성 요소</th>
+        <th>역할</th>
+        <th>핵심 값 / 이유</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>@st.cache_resource</code></td>
+        <td>모델 메모리 고정</td>
+        <td>세션 전체 1회 로딩 — 추론 지연 제거</td>
+      </tr>
+      <tr>
+        <td><code>conf=0.65</code></td>
+        <td>신뢰도 임계값</td>
+        <td>0.5 → 0.65 상향, 오탐 감소</td>
+      </tr>
+      <tr>
+        <td><code>SKIP_CLASSES</code></td>
+        <td>클래스 필터</td>
+        <td>방어·부시리 예측 제거 (서비스 범위 외)</td>
+      </tr>
+      <tr>
+        <td><code>hf_hub_download</code></td>
+        <td>모델 자동 배포</td>
+        <td>Streamlit Cloud에서 Git LFS 없이 가중치 배포</td>
+      </tr>
+      <tr>
+        <td><code>result.plot()</code></td>
+        <td>바운딩 박스 시각화</td>
+        <td>Ultralytics 내장 — BGR numpy 반환 → RGB 변환 필요</td>
+      </tr>
+      <tr>
+        <td><code>seen</code> 셋 + top3 루프</td>
+        <td>중복 제거</td>
+        <td>클래스별 최고 신뢰도 박스 1개만 선택</td>
+      </tr>
+    </tbody>
+  </table>
+
+  </div><!-- /tab-yolo -->
+
+  <!-- ══════════════ ROBOFLOW TAB ══════════════ -->
+  <div id="tab-roboflow" style="display:none">
+
+  <!-- Roboflow Flow -->
+  <div class="flow">
+    <div class="flow-step">🖼️ 원본 이미지 수집</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">📦 Roboflow 업로드</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">🏷️ 라벨링 &amp; 증강</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">⬇️ YOLOv8 포맷 다운로드</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">🤖 모델 학습</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">🚀 HF Hub 배포</div>
+  </div>
+
+  <!-- RF-1: 환경 설정 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num" style="background:var(--pink)">R1</div>
+      <div class="section-title">환경 설정 &amp; GPU 확인</div>
+      <div class="section-line">Section 1 — install cell</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="op">!</span><span class="fn">pip install</span> <span class="va">-q</span> <span class="st">ultralytics roboflow</span>
+<span class="st">           huggingface-hub python-dotenv</span>
+
+<span class="k">import</span> <span class="va">torch</span>
+<span class="k">from</span> <span class="va">ultralytics</span> <span class="k">import</span> <span class="cl">YOLO</span>
+
+<span class="bi">print</span>(<span class="va">torch</span><span class="op">.</span><span class="va">__version__</span>)
+<span class="hl"><span class="bi">print</span>(<span class="va">torch</span><span class="op">.</span><span class="fn">cuda</span><span class="op">.</span><span class="fn">is_available</span>())</span>
+<span class="bi">print</span>(<span class="va">torch</span><span class="op">.</span><span class="fn">cuda</span><span class="op">.</span><span class="fn">get_device_name</span>(<span class="nm">0</span>))
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon info">i</div><div>Colab 런타임 → <strong>T4 GPU 필수</strong> 선택. CPU로 실행하면 100 epoch 기준 수십 시간 소요</div></div>
+        <div class="note"><div class="note-icon ok">✓</div><div><code>torch.cuda.is_available()</code> — GPU 인식 여부 확인. <code>False</code>면 런타임 재연결 필요</div></div>
+        <div class="note"><div class="note-icon key">★</div><div><code>python-dotenv</code> — 로컬 실행 시 <code>.env</code>에서 API 키 로드. Colab은 Secrets 탭 사용</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RF-2: 데이터셋 다운로드 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num" style="background:var(--pink)">R2</div>
+      <div class="section-title">Roboflow 데이터셋 다운로드</div>
+      <div class="section-line">Section 2 — roboflow-download cell</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="k">from</span> <span class="va">roboflow</span> <span class="k">import</span> <span class="cl">Roboflow</span>
+
+<span class="cm"># 환경 감지: Colab vs 로컬</span>
+<span class="va">IS_COLAB</span> <span class="op">=</span> <span class="st">'COLAB_GPU'</span> <span class="k">in</span> <span class="va">os</span><span class="op">.</span><span class="va">environ</span>
+
+<span class="k">if not</span> <span class="va">IS_COLAB</span><span class="op">:</span>             <span class="cm"># 로컬: .env 파일</span>
+    <span class="fn">load_dotenv</span>()
+<span class="k">else</span><span class="op">:</span>                         <span class="cm"># Colab: Secrets</span>
+    <span class="va">os</span><span class="op">.</span><span class="va">environ</span>[<span class="st">'ROBOFLOW_API_KEY'</span>] \
+        <span class="op">=</span> <span class="fn">userdata</span><span class="op">.</span><span class="fn">get</span>(<span class="st">'ROBOFLOW_API_KEY'</span>)
+
+<span class="va">API_KEY</span> <span class="op">=</span> <span class="va">os</span><span class="op">.</span><span class="fn">getenv</span>(<span class="st">'ROBOFLOW_API_KEY'</span>, <span class="st">''</span>)
+
+<span class="va">rf</span>      <span class="op">=</span> <span class="cl">Roboflow</span>(<span class="va">api_key</span><span class="op">=</span><span class="va">API_KEY</span>)
+<span class="hl"><span class="va">project</span> <span class="op">=</span> <span class="va">rf</span><span class="op">.</span><span class="fn">workspace</span>(<span class="st">'50seoks-workspace'</span>)</span>
+<span class="hl">             <span class="op">.</span><span class="fn">project</span>(<span class="st">'fishcheck-jqum0'</span>)</span>
+<span class="hl"><span class="va">version</span> <span class="op">=</span> <span class="va">project</span><span class="op">.</span><span class="fn">version</span>(<span class="nm">2</span>)</span>
+<span class="hl"><span class="va">dataset</span> <span class="op">=</span> <span class="va">version</span><span class="op">.</span><span class="fn">download</span>(<span class="st">'yolov8'</span>)</span>
+
+<span class="va">DATA_YAML</span> <span class="op">=</span> <span class="st">f'{dataset.location}/data.yaml'</span>
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon warn">!</div><div><strong>API 키 이중 처리</strong> — 로컬은 <code>.env</code>, Colab은 Secrets 탭 (좌측 열쇠 아이콘). 하드코딩 금지</div></div>
+        <div class="note"><div class="note-icon key">★</div><div><code>rf.workspace('50seoks-workspace').project('fishcheck-jqum0')</code> — Roboflow 워크스페이스 &gt; 프로젝트 경로 지정</div></div>
+        <div class="note"><div class="note-icon key">★</div><div><code>version(2)</code> — 데이터셋 v2 지정. 442장 원본 + 3배 증강(회전·밝기·노이즈) = 약 1,300장</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>download('yolov8')</code> — YOLOv8 포맷으로 다운로드. <code>train/valid/test</code> 폴더 + <code>data.yaml</code> 자동 생성</div></div>
+        <div class="note"><div class="note-icon ok">✓</div><div><code>DATA_YAML</code> — 이후 학습·검증 모든 단계에서 이 경로를 참조</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RF-3: 데이터셋 구성 확인 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num" style="background:var(--pink)">R3</div>
+      <div class="section-title">데이터셋 구성 확인</div>
+      <div class="section-line">Section 2 — check-dataset cell</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="k">import</span> <span class="va">yaml</span>
+
+<span class="k">with</span> <span class="bi">open</span>(<span class="va">DATA_YAML</span>) <span class="k">as</span> <span class="va">f</span><span class="op">:</span>
+    <span class="va">cfg</span> <span class="op">=</span> <span class="va">yaml</span><span class="op">.</span><span class="fn">safe_load</span>(<span class="va">f</span>)
+
+<span class="hl"><span class="bi">print</span>(<span class="va">cfg</span>[<span class="st">"nc"</span>])      <span class="cm"># 클래스 수: 4</span></span>
+<span class="hl"><span class="bi">print</span>(<span class="va">cfg</span>[<span class="st">"names"</span>])   <span class="cm"># ['bangeo','bushiri',</span></span>
+                       <span class="cm">#  'gajami','gwangeo']</span>
+
+<span class="k">for</span> <span class="va">split</span> <span class="k">in</span> [<span class="st">'train'</span>, <span class="st">'valid'</span>, <span class="st">'test'</span>]<span class="op">:</span>
+    <span class="va">p</span> <span class="op">=</span> <span class="cl">Path</span>(<span class="va">dataset</span><span class="op">.</span><span class="va">location</span>) \
+        <span class="op">/</span> <span class="va">split</span> <span class="op">/</span> <span class="st">'images'</span>
+    <span class="bi">print</span>(<span class="bi">len</span>(<span class="bi">list</span>(<span class="va">p</span><span class="op">.</span><span class="fn">glob</span>(<span class="st">'*'</span>))))
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon info">i</div><div><code>data.yaml</code> — Roboflow가 자동 생성하는 학습 설정 파일. 클래스 수(<code>nc</code>), 클래스 이름, 각 split 경로 포함</div></div>
+        <div class="note"><div class="note-icon key">★</div><div><code>nc: 4</code> — 방어·부시리·가자미·광어 4클래스. 서비스에서는 방어·부시리를 <code>SKIP_CLASSES</code>로 제거</div></div>
+        <div class="note"><div class="note-icon ok">✓</div><div>split별 이미지 수 확인 — 불균형 클래스나 데이터 누락을 학습 전에 사전 검증</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RF-4: 학습 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num" style="background:var(--pink)">R4</div>
+      <div class="section-title">YOLOv8s 모델 학습</div>
+      <div class="section-line">Section 3 — train cell</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="va">model</span> <span class="op">=</span> <span class="cl">YOLO</span>(<span class="st">'yolov8s.pt'</span>) <span class="cm"># ImageNet 사전학습</span>
+
+<span class="va">model</span><span class="op">.</span><span class="fn">train</span>(
+    <span class="va">data</span>    <span class="op">=</span> <span class="va">DATA_YAML</span>,
+    <span class="hl"><span class="va">epochs</span>  <span class="op">=</span> <span class="nm">100</span>,</span>
+    <span class="hl"><span class="va">imgsz</span>   <span class="op">=</span> <span class="nm">640</span>,</span>
+    <span class="va">batch</span>   <span class="op">=</span> <span class="nm">16</span>,
+    <span class="hl"><span class="va">patience</span><span class="op">=</span> <span class="nm">20</span>,</span>
+    <span class="va">project</span> <span class="op">=</span> <span class="va">PROJECT</span>,
+    <span class="va">name</span>    <span class="op">=</span> <span class="st">'yolov8s_det_v2'</span>,
+    <span class="cm"># 데이터 증강</span>
+    <span class="va">hsv_h</span>   <span class="op">=</span> <span class="nm">0.015</span>,
+    <span class="va">hsv_s</span>   <span class="op">=</span> <span class="nm">0.7</span>,
+    <span class="va">hsv_v</span>   <span class="op">=</span> <span class="nm">0.4</span>,
+    <span class="hl"><span class="va">fliplr</span>  <span class="op">=</span> <span class="nm">0.5</span>,</span>
+    <span class="hl"><span class="va">mosaic</span>  <span class="op">=</span> <span class="nm">1.0</span>,</span>
+)
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon key">★</div><div><code>YOLO('yolov8s.pt')</code> — ImageNet 사전학습 가중치로 시작 (Transfer Learning). 없으면 자동 다운로드</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>epochs=100</code> — 최대 반복 횟수. <code>patience=20</code>으로 20 epoch 동안 개선 없으면 조기 종료 (Early Stopping)</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>imgsz=640</code> — 입력 해상도. 추론 시 model.py의 YOLO 호출과 반드시 일치해야 함</div></div>
+        <div class="note"><div class="note-icon ok">✓</div><div><code>fliplr=0.5</code> — 50% 확률로 좌우 반전 증강. 생선 방향 다양성 확보</div></div>
+        <div class="note"><div class="note-icon ok">✓</div><div><code>mosaic=1.0</code> — 4장 이미지를 격자 합성. 소량 데이터셋에서 맥락 다양성 극대화</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>hsv_*</code> — 색조(H)·채도(S)·명도(V) 랜덤 변형. 수조 조명·수면 반사 등 환경 변화 대응</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RF-5: 검증 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num" style="background:var(--pink)">R5</div>
+      <div class="section-title">검증 결과 확인</div>
+      <div class="section-line">Section 4 — validate cell</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="va">val_results</span> <span class="op">=</span> <span class="va">best_model</span><span class="op">.</span><span class="fn">val</span>(
+    <span class="va">data</span><span class="op">=</span><span class="va">DATA_YAML</span>, <span class="va">verbose</span><span class="op">=</span><span class="k">True</span>
+)
+
+<span class="hl"><span class="bi">print</span>(<span class="va">val_results</span><span class="op">.</span><span class="va">box</span><span class="op">.</span><span class="va">map50</span>)</span>
+<span class="hl"><span class="bi">print</span>(<span class="va">val_results</span><span class="op">.</span><span class="va">box</span><span class="op">.</span><span class="va">map</span>)</span>
+<span class="bi">print</span>(<span class="va">val_results</span><span class="op">.</span><span class="va">box</span><span class="op">.</span><span class="va">mp</span>)  <span class="cm"># Precision</span>
+<span class="bi">print</span>(<span class="va">val_results</span><span class="op">.</span><span class="va">box</span><span class="op">.</span><span class="va">mr</span>)  <span class="cm"># Recall</span>
+
+<span class="cm"># 학습 곡선 시각화</span>
+<span class="va">results_png</span> <span class="op">=</span> <span class="cl">Path</span>(<span class="va">PROJECT</span>) \
+    <span class="op">/</span> <span class="va">RUN_NAME</span> <span class="op">/</span> <span class="st">'results.png'</span>
+<span class="va">plt</span><span class="op">.</span><span class="fn">imshow</span>(<span class="fn">mpimg.imread</span>(<span class="bi">str</span>(<span class="va">results_png</span>)))
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon key">★</div><div><code>map50</code> — IoU 0.5 기준 mAP. 탐지 모델의 핵심 지표. 1.0에 가까울수록 정밀</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>map</code> — IoU 0.5~0.95 평균 mAP. 바운딩 박스 위치 정확도까지 포함한 엄격한 지표</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>box.mp</code> (Precision) — 탐지한 것 중 맞은 비율 / <code>box.mr</code> (Recall) — 실제 있는 것 중 찾은 비율</div></div>
+        <div class="note"><div class="note-icon ok">✓</div><div><code>results.png</code> — Ultralytics 자동 생성 학습 곡선 (loss, mAP, P/R 그래프)</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RF-6: HF 업로드 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num" style="background:var(--pink)">R6</div>
+      <div class="section-title">Hugging Face Hub 업로드 &amp; 배포 연결</div>
+      <div class="section-line">Section 7 — hf-upload cell</div>
+    </div>
+    <div class="code-body">
+      <div class="code-pane"><pre>
+<span class="k">from</span> <span class="va">huggingface_hub</span> <span class="k">import</span> <span class="cl">HfApi</span>, <span class="fn">login</span>
+
+<span class="va">HF_USERNAME</span> <span class="op">=</span> <span class="st">'your-hf-username'</span>
+
+<span class="fn">login</span>()  <span class="cm"># HF 토큰 입력</span>
+<span class="va">REPO_ID</span> <span class="op">=</span> <span class="st">f'{HF_USERNAME}/fishcheck-model'</span>
+<span class="va">api</span> <span class="op">=</span> <span class="cl">HfApi</span>()
+<span class="va">api</span><span class="op">.</span><span class="fn">create_repo</span>(
+    <span class="va">repo_id</span><span class="op">=</span><span class="va">REPO_ID</span>, <span class="va">exist_ok</span><span class="op">=</span><span class="k">True</span>
+)
+<span class="hl"><span class="va">api</span><span class="op">.</span><span class="fn">upload_file</span>(</span>
+<span class="hl">    <span class="va">path_or_fileobj</span> <span class="op">=</span> <span class="bi">str</span>(<span class="va">BEST_PT</span>),</span>
+<span class="hl">    <span class="va">path_in_repo</span>    <span class="op">=</span> <span class="st">'best.pt'</span>,</span>
+<span class="hl">    <span class="va">repo_id</span>         <span class="op">=</span> <span class="va">REPO_ID</span>,</span>
+<span class="hl">)</span>
+
+<span class="cm"># model.py에서 자동 다운로드</span>
+<span class="cm"># HF_REPO_ID=your-hf-username/fishcheck-model</span>
+</pre></div>
+      <div class="annotation-pane">
+        <div class="note"><div class="note-icon key">★</div><div><strong>전체 파이프라인 연결 지점</strong> — 여기서 업로드한 <code>best.pt</code>를 <code>src/model.py</code>의 <code>hf_hub_download</code>가 Streamlit Cloud 서버에서 자동으로 당겨옴</div></div>
+        <div class="note"><div class="note-icon info">i</div><div><code>exist_ok=True</code> — 레포가 이미 있어도 오류 없이 진행. 재학습 후 덮어쓰기 가능</div></div>
+        <div class="note"><div class="note-icon warn">!</div><div><code>login()</code> — HF write 권한 토큰 필요. Settings → Access Tokens → New token (write)</div></div>
+        <div class="note"><div class="note-icon ok">✓</div><div>업로드 완료 후 Streamlit Cloud Secrets에 <code>HF_REPO_ID</code> 설정 → 서비스 자동 최신 모델 사용</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Roboflow 요약 테이블 -->
+  <table>
+    <thead>
+      <tr>
+        <th>구성 요소</th>
+        <th>역할</th>
+        <th>핵심 값 / 이유</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>version(2).download('yolov8')</code></td>
+        <td>데이터셋 다운로드</td>
+        <td>v2 — 442장 + 3배 증강, YOLOv8 포맷 자동 변환</td>
+      </tr>
+      <tr>
+        <td><code>ROBOFLOW_API_KEY</code></td>
+        <td>인증</td>
+        <td>로컬 .env / Colab Secrets 이중 처리, 하드코딩 금지</td>
+      </tr>
+      <tr>
+        <td><code>epochs=100 / patience=20</code></td>
+        <td>학습 제어</td>
+        <td>Early Stopping — 과적합 방지</td>
+      </tr>
+      <tr>
+        <td><code>mosaic=1.0</code></td>
+        <td>데이터 증강</td>
+        <td>4장 합성 — 소량 데이터셋 다양성 확보</td>
+      </tr>
+      <tr>
+        <td><code>map50 / map</code></td>
+        <td>검증 지표</td>
+        <td>IoU 0.5 기준 mAP — 탐지 성능 핵심 지표</td>
+      </tr>
+      <tr>
+        <td><code>api.upload_file → HF Hub</code></td>
+        <td>모델 배포</td>
+        <td>model.py의 hf_hub_download와 연결 — Git LFS 불필요</td>
+      </tr>
+    </tbody>
+  </table>
+
+  </div><!-- /tab-roboflow -->
+
+</div>
+</body>
+</html>

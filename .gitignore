@@ -51,6 +51,7 @@ Thumbs.db
 
 # 학습 데이터셋 및 결과 (용량 큼)
 data/fishcheck_v2/
+data/karei_hirame/
 runs/
 models/
 
