@@ -34,6 +34,8 @@ with st.sidebar:
     st.divider()
     st.header("판별 가능 어종")
     for en, ko in CLASS_KO.items():
+        if "_head_eye" in en:
+            continue
         info = FISH_INFO[en]
         st.markdown(f"**{ko}** — {info['특징'][:30]}...")
     st.divider()

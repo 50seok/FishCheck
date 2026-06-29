@@ -95,6 +95,18 @@ def _effnet_classify(effnet: nn.Module, crop: Image.Image) -> tuple[str, float]:
     return EFFNET_CLASSES[idx], float(probs[idx])
 
 
+_HEAD_EYE_CLASSES = {"gwangeo_head_eye", "gajami_head_eye"}
+
+def _draw_bbox(img: Image.Image, xyxy: tuple, label: str, color: tuple) -> np.ndarray:
+    x1, y1, x2, y2 = xyxy
+    frame = np.array(img.convert("RGB"))[:, :, ::-1].copy()
+    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+    (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+    cv2.rectangle(frame, (x1, y1 - th - 8), (x1 + tw + 4, y1), color, -1)
+    cv2.putText(frame, label, (x1 + 2, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+    return frame
+
+
 def predict(img: Image.Image, use_effnet: bool = True) -> dict:
     yolo   = load_model()
     effnet = load_effnet() if use_effnet else None
@@ -106,75 +118,75 @@ def predict(img: Image.Image, use_effnet: bool = True) -> dict:
         return {"detected": False, "class_en": None, "class_ko": None, "confidence": 0.0, "top3": []}
 
     MIN_ASPECT = 1.3
-    boxes = []
+    head_eye_boxes, body_boxes = [], []
+
     for b in result.boxes:
         cls_name = result.names[int(b.cls[0])]
         if cls_name in SKIP_CLASSES:
             continue
         x1, y1, x2, y2 = b.xyxy[0]
-        aspect = float((x2 - x1) / (y2 - y1 + 1e-6))
-        if aspect < MIN_ASPECT:
-            continue
-        boxes.append({
-            "cls" : int(b.cls[0]),
-            "conf": float(b.conf[0]),
-            "xyxy": (int(x1), int(y1), int(x2), int(y2)),
-        })
-    boxes.sort(key=lambda x: x["conf"], reverse=True)
+        box = {"cls_name": cls_name, "conf": float(b.conf[0]),
+               "xyxy": (int(x1), int(y1), int(x2), int(y2))}
+        if cls_name in _HEAD_EYE_CLASSES:
+            head_eye_boxes.append(box)
+        elif float((x2 - x1) / (y2 - y1 + 1e-6)) >= MIN_ASPECT:
+            body_boxes.append(box)
 
-    if not boxes:
+    head_eye_boxes.sort(key=lambda x: x["conf"], reverse=True)
+    body_boxes.sort(key=lambda x: x["conf"], reverse=True)
+
+    # head_eye 우선: 눈 위치(좌광우도)가 확실한 판별 근거, EfficientNet 불필요
+    if head_eye_boxes:
+        best      = head_eye_boxes[0]
+        class_en  = best["cls_name"].replace("_head_eye", "")
+        class_ko  = CLASS_KO.get(best["cls_name"], class_en)
+        confidence = best["conf"]
+        annotated = _draw_bbox(img, best["xyxy"],
+                               f"{class_en} (eye) {confidence:.2f}", (0, 200, 255))
+        return {
+            "detected": True, "class_en": class_en, "class_ko": class_ko,
+            "confidence": confidence,
+            "top3": [{"class_en": class_en, "class_ko": class_ko, "confidence": confidence}],
+            "annotated_image": annotated,
+        }
+
+    if not body_boxes:
         return {"detected": False, "class_en": None, "class_ko": None, "confidence": 0.0, "top3": []}
 
-    best = boxes[0]
+    best = body_boxes[0]
 
-    # 2-stage: EfficientNet이 있으면 크롭으로 재분류
     if effnet is not None:
         x1, y1, x2, y2 = best["xyxy"]
-        crop = img.crop((x1, y1, x2, y2))
-        x = _EFFNET_TF(crop.convert("RGB")).unsqueeze(0)
+        x = _EFFNET_TF(img.crop((x1, y1, x2, y2)).convert("RGB")).unsqueeze(0)
         with torch.no_grad():
             probs = torch.softmax(effnet(x), dim=1)[0]
         idx        = int(probs.argmax())
         class_en   = EFFNET_CLASSES[idx]
         confidence = float(probs[idx])
         top3 = [
-            {"class_en": EFFNET_CLASSES[i], "class_ko": CLASS_KO.get(EFFNET_CLASSES[i], EFFNET_CLASSES[i]), "confidence": float(probs[i])}
+            {"class_en": EFFNET_CLASSES[i], "class_ko": CLASS_KO.get(EFFNET_CLASSES[i], EFFNET_CLASSES[i]),
+             "confidence": float(probs[i])}
             for i in probs.argsort(descending=True).tolist()
         ]
+        annotated = _draw_bbox(img, best["xyxy"], f"{class_en} {confidence:.2f}", (0, 255, 255))
     else:
-        class_en   = result.names[best["cls"]]
+        class_en   = best["cls_name"]
         confidence = best["conf"]
         seen, top3 = set(), []
-        for b in boxes:
-            name = result.names[b["cls"]]
-            if name not in seen:
-                seen.add(name)
-                top3.append({"class_en": name, "class_ko": CLASS_KO.get(name, name), "confidence": b["conf"]})
+        for b in body_boxes:
+            if b["cls_name"] not in seen:
+                seen.add(b["cls_name"])
+                top3.append({"class_en": b["cls_name"],
+                             "class_ko": CLASS_KO.get(b["cls_name"], b["cls_name"]),
+                             "confidence": b["conf"]})
             if len(top3) == 3:
                 break
-
-    class_ko = CLASS_KO.get(class_en, class_en)
-
-    # EFF 모드: EfficientNet 결과로 bbox 라벨 재드로잉
-    if effnet is not None:
-        x1, y1, x2, y2 = best["xyxy"]
-        frame = np.array(img.convert("RGB"))[:, :, ::-1].copy()
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
-        label = f"{class_en} {confidence:.2f}"
-        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-        cv2.rectangle(frame, (x1, y1 - th - 8), (x1 + tw + 4, y1), (0, 255, 255), -1)
-        cv2.putText(frame, label, (x1 + 2, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
-        annotated = frame
-    else:
         annotated = result.plot()
 
+    class_ko = CLASS_KO.get(class_en, class_en)
     return {
-        "detected"       : True,
-        "class_en"       : class_en,
-        "class_ko"       : class_ko,
-        "confidence"     : confidence,
-        "top3"           : top3,
-        "annotated_image": annotated,
+        "detected": True, "class_en": class_en, "class_ko": class_ko,
+        "confidence": confidence, "top3": top3, "annotated_image": annotated,
     }
 
 
