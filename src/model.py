@@ -3,15 +3,21 @@ from pathlib import Path
 
 import numpy as np
 import streamlit as st
+import torch
+import torch.nn as nn
+import torchvision.models as tv_models
+import torchvision.transforms as T
 from PIL import Image, ImageFilter
 from ultralytics import YOLO
 
-MODEL_PATH = "models/best.pt"
-# 학습 완료 후 Hugging Face Hub repo ID를 여기에 기록하거나 환경변수로 전달
-# 예: HF_REPO_ID=50seoks/fishcheck-model  (Streamlit Cloud → Secrets에 설정)
-HF_REPO_ID = os.getenv("HF_REPO_ID", "")
+MODEL_PATH  = "models/best.pt"
+EFFNET_PATH = "models/effnet.pt"
+HF_REPO_ID  = os.getenv("HF_REPO_ID", "")
 
 SKIP_CLASSES = {"bangeo", "bushiri"}
+
+# EfficientNet class order mirrors ImageFolder sorted() on effnet_crops/
+EFFNET_CLASSES = ["gajami", "gwangeo"]
 
 CLASS_KO = {
     "gajami" : "가자미/도다리",
@@ -33,13 +39,19 @@ FISH_INFO = {
     },
 }
 
+_EFFNET_TF = T.Compose([
+    T.Resize((224, 224)),
+    T.ToTensor(),
+    T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+])
+
 
 @st.cache_resource(show_spinner="모델 로딩 중... (최초 1회만)")
 def load_model() -> YOLO:
     if not Path(MODEL_PATH).exists():
         if not HF_REPO_ID:
             raise FileNotFoundError(
-                f"{MODEL_PATH} 없음. 학습 후 HF_REPO_ID 환경변수를 설정하거나 모델 파일을 직접 배치하세요."
+                f"{MODEL_PATH} 없음. HF_REPO_ID 환경변수를 설정하거나 모델 파일을 직접 배치하세요."
             )
         from huggingface_hub import hf_hub_download
         Path(MODEL_PATH).parent.mkdir(parents=True, exist_ok=True)
@@ -47,15 +59,45 @@ def load_model() -> YOLO:
     return YOLO(MODEL_PATH)
 
 
+@st.cache_resource(show_spinner=False)
+def load_effnet() -> nn.Module | None:
+    if not Path(EFFNET_PATH).exists():
+        if not HF_REPO_ID:
+            return None
+        try:
+            from huggingface_hub import hf_hub_download
+            Path(EFFNET_PATH).parent.mkdir(parents=True, exist_ok=True)
+            hf_hub_download(repo_id=HF_REPO_ID, filename="effnet.pt", local_dir="models")
+        except Exception:
+            return None
+    model = tv_models.efficientnet_b0()
+    model.classifier[1] = nn.Linear(model.classifier[1].in_features, len(EFFNET_CLASSES))
+    state = torch.load(EFFNET_PATH, map_location="cpu")
+    model.load_state_dict(state)
+    model.eval()
+    return model
+
+
+def _effnet_classify(effnet: nn.Module, crop: Image.Image) -> tuple[str, float]:
+    """EfficientNet으로 크롭 이미지 분류 → (class_en, confidence)"""
+    x = _EFFNET_TF(crop.convert("RGB")).unsqueeze(0)
+    with torch.no_grad():
+        probs = torch.softmax(effnet(x), dim=1)[0]
+    idx = int(probs.argmax())
+    return EFFNET_CLASSES[idx], float(probs[idx])
+
+
 def predict(img: Image.Image) -> dict:
-    model   = load_model()
-    results = model(img, verbose=False, conf=0.65)
+    yolo   = load_model()
+    effnet = load_effnet()
+
+    results = yolo(img, verbose=False, conf=0.65)
     result  = results[0]
 
     if result.boxes is None or len(result.boxes) == 0:
         return {"detected": False, "class_en": None, "class_ko": None, "confidence": 0.0, "top3": []}
 
-    MIN_ASPECT = 1.3  # 납작한 어류(광어·가자미) 최소 가로/세로 비율
+    MIN_ASPECT = 1.3
     boxes = []
     for b in result.boxes:
         cls_name = result.names[int(b.cls[0])]
@@ -65,45 +107,57 @@ def predict(img: Image.Image) -> dict:
         aspect = float((x2 - x1) / (y2 - y1 + 1e-6))
         if aspect < MIN_ASPECT:
             continue
-        boxes.append({"cls": int(b.cls[0]), "conf": float(b.conf[0])})
+        boxes.append({
+            "cls" : int(b.cls[0]),
+            "conf": float(b.conf[0]),
+            "xyxy": (int(x1), int(y1), int(x2), int(y2)),
+        })
     boxes.sort(key=lambda x: x["conf"], reverse=True)
 
     if not boxes:
         return {"detected": False, "class_en": None, "class_ko": None, "confidence": 0.0, "top3": []}
 
-    best       = boxes[0]
-    class_en   = result.names[best["cls"]]
-    class_ko   = CLASS_KO.get(class_en, class_en)
-    confidence = best["conf"]
+    best = boxes[0]
 
-    seen  = set()
-    top3  = []
-    for b in boxes:
-        name = result.names[b["cls"]]
-        if name not in seen:
-            seen.add(name)
-            top3.append({"class_en": name, "class_ko": CLASS_KO.get(name, name), "confidence": b["conf"]})
-        if len(top3) == 3:
-            break
+    # 2-stage: EfficientNet이 있으면 크롭으로 재분류
+    if effnet is not None:
+        x1, y1, x2, y2 = best["xyxy"]
+        crop = img.crop((x1, y1, x2, y2))
+        x = _EFFNET_TF(crop.convert("RGB")).unsqueeze(0)
+        with torch.no_grad():
+            probs = torch.softmax(effnet(x), dim=1)[0]
+        idx        = int(probs.argmax())
+        class_en   = EFFNET_CLASSES[idx]
+        confidence = float(probs[idx])
+        top3 = [
+            {"class_en": EFFNET_CLASSES[i], "class_ko": CLASS_KO.get(EFFNET_CLASSES[i], EFFNET_CLASSES[i]), "confidence": float(probs[i])}
+            for i in probs.argsort(descending=True).tolist()
+        ]
+    else:
+        class_en   = result.names[best["cls"]]
+        confidence = best["conf"]
+        seen, top3 = set(), []
+        for b in boxes:
+            name = result.names[b["cls"]]
+            if name not in seen:
+                seen.add(name)
+                top3.append({"class_en": name, "class_ko": CLASS_KO.get(name, name), "confidence": b["conf"]})
+            if len(top3) == 3:
+                break
 
+    class_ko = CLASS_KO.get(class_en, class_en)
     return {
-        "detected"      : True,
-        "class_en"      : class_en,
-        "class_ko"      : class_ko,
-        "confidence"    : confidence,
-        "top3"          : top3,
+        "detected"       : True,
+        "class_en"       : class_en,
+        "class_ko"       : class_ko,
+        "confidence"     : confidence,
+        "top3"           : top3,
         "annotated_image": result.plot(),
     }
 
 
 def is_real_photo(img: Image.Image, threshold: float = 3.0) -> bool:
-    """실사 사진 여부 판별.
-    실사: 가우시안 블러 후에도 grain/noise 잔존 → hf_noise 높음
-    일러스트/그림: 블러하면 평탄해짐 → hf_noise 낮음
-    """
-    gray = img.convert("L").resize((128, 128))
+    gray    = img.convert("L").resize((128, 128))
     blurred = gray.filter(ImageFilter.GaussianBlur(radius=3))
-    arr_orig = np.array(gray, dtype=np.float32)
-    arr_blur = np.array(blurred, dtype=np.float32)
-    hf_noise = np.abs(arr_orig - arr_blur).mean()
+    hf_noise = np.abs(np.array(gray, dtype=np.float32) - np.array(blurred, dtype=np.float32)).mean()
     return hf_noise >= threshold
