@@ -39,14 +39,16 @@ with st.sidebar:
     st.divider()
     st.caption("YOLOv8 + EfficientNetB0 2단계 · 학습 데이터: 생물 상태 통 생선")
 
-tab_upload, tab_camera = st.tabs(["📁 사진 업로드", "📷 카메라 촬영"])
+tab_yolo, tab_eff, tab_camera = st.tabs(["📁 사진업로드 YOLO", "📁 사진업로드 EFF", "📷 카메라 촬영"])
 
 img: Image.Image | None = None
+use_effnet = False
 
-with tab_upload:
+with tab_yolo:
     uploaded = st.file_uploader(
         "생선 사진을 업로드하세요 (jpg / png / webp)",
-        help="jpg, png, webp 형식의 이미지만 분석됩니다.",
+        key="upload_yolo",
+        help="YOLO 단일 모델로 판별합니다.",
     )
     if uploaded:
         allowed_mime = {"image/jpeg", "image/png", "image/webp"}
@@ -58,6 +60,29 @@ with tab_upload:
                 img.verify()
                 uploaded.seek(0)
                 img = Image.open(uploaded)
+                use_effnet = False
+                st.image(img, caption="업로드된 이미지", use_container_width=True)
+            except Exception:
+                st.error("손상된 이미지 파일입니다. 다른 사진을 사용해 주세요.")
+                img = None
+
+with tab_eff:
+    uploaded_eff = st.file_uploader(
+        "생선 사진을 업로드하세요 (jpg / png / webp)",
+        key="upload_eff",
+        help="YOLO 탐지 → EfficientNetB0 분류 2단계로 판별합니다.",
+    )
+    if uploaded_eff:
+        allowed_mime = {"image/jpeg", "image/png", "image/webp"}
+        if uploaded_eff.type not in allowed_mime:
+            st.error("jpg / png / webp 이미지 파일만 업로드할 수 있습니다.")
+        else:
+            try:
+                img = Image.open(uploaded_eff)
+                img.verify()
+                uploaded_eff.seek(0)
+                img = Image.open(uploaded_eff)
+                use_effnet = True
                 st.image(img, caption="업로드된 이미지", use_container_width=True)
             except Exception:
                 st.error("손상된 이미지 파일입니다. 다른 사진을 사용해 주세요.")
@@ -67,6 +92,7 @@ with tab_camera:
     shot = st.camera_input("카메라로 생선을 찍어주세요")
     if shot:
         img = Image.open(shot)
+        use_effnet = False
 
 if img is not None:
     if not is_real_photo(img):
@@ -76,7 +102,7 @@ if img is not None:
             icon="⚠️",
         )
     with st.spinner("어종 분석 중..."):
-        result = predict(img)
+        result = predict(img, use_effnet=use_effnet)
 
     st.divider()
 

@@ -87,9 +87,9 @@ def _effnet_classify(effnet: nn.Module, crop: Image.Image) -> tuple[str, float]:
     return EFFNET_CLASSES[idx], float(probs[idx])
 
 
-def predict(img: Image.Image) -> dict:
+def predict(img: Image.Image, use_effnet: bool = True) -> dict:
     yolo   = load_model()
-    effnet = load_effnet()
+    effnet = load_effnet() if use_effnet else None
 
     results = yolo(img, verbose=False, conf=0.65)
     result  = results[0]
