@@ -55,11 +55,18 @@ def predict(img: Image.Image) -> dict:
     if result.boxes is None or len(result.boxes) == 0:
         return {"detected": False, "class_en": None, "class_ko": None, "confidence": 0.0, "top3": []}
 
-    boxes = sorted(
-        [{"cls": int(b.cls[0]), "conf": float(b.conf[0])} for b in result.boxes
-         if result.names[int(b.cls[0])] not in SKIP_CLASSES],
-        key=lambda x: x["conf"], reverse=True,
-    )
+    MIN_ASPECT = 1.3  # 납작한 어류(광어·가자미) 최소 가로/세로 비율
+    boxes = []
+    for b in result.boxes:
+        cls_name = result.names[int(b.cls[0])]
+        if cls_name in SKIP_CLASSES:
+            continue
+        x1, y1, x2, y2 = b.xyxy[0]
+        aspect = float((x2 - x1) / (y2 - y1 + 1e-6))
+        if aspect < MIN_ASPECT:
+            continue
+        boxes.append({"cls": int(b.cls[0]), "conf": float(b.conf[0])})
+    boxes.sort(key=lambda x: x["conf"], reverse=True)
 
     if not boxes:
         return {"detected": False, "class_en": None, "class_ko": None, "confidence": 0.0, "top3": []}
