@@ -1,7 +1,7 @@
 import streamlit as st
 from PIL import Image
 
-from src.model import predict, load_model, load_clip, is_real_photo, FISH_INFO, CLASS_KO
+from src.model import predict, load_model, load_clip, load_effnet, is_real_photo, FISH_INFO, CLASS_KO
 
 st.set_page_config(
     page_title="FishCheck — 수산시장 생선 판별기",
@@ -10,7 +10,8 @@ st.set_page_config(
 )
 
 load_model()
-load_clip()  # 앱 시작 시 CLIP 미리 로드
+load_clip()
+load_effnet()
 
 st.title("🐟 FishCheck")
 st.markdown("**수산시장에서 생선에 속지 않도록 — 사진 한 장으로 어종을 판별합니다**")
@@ -39,10 +40,10 @@ with st.sidebar:
         info = FISH_INFO[en]
         st.markdown(f"**{ko}** — {info['특징'][:30]}...")
     st.divider()
-    st.caption("YOLOv8 · 학습 데이터: 생물 상태 통 생선")
+    st.caption("YOLOv8 + EfficientNetB0 2단계 · 학습 데이터: 생물 상태 통 생선")
 
 
-def show_result(img: Image.Image) -> None:
+def show_result(img: Image.Image, use_effnet: bool = False) -> None:
     with st.spinner("📷 이미지 유형 확인 중 (CLIP)..."):
         real = is_real_photo(img)
 
@@ -54,7 +55,7 @@ def show_result(img: Image.Image) -> None:
         return
 
     with st.spinner("🔍 어종 분석 중..."):
-        result = predict(img)
+        result = predict(img, use_effnet=use_effnet)
 
     st.divider()
 
@@ -113,14 +114,14 @@ def load_image(uploaded) -> Image.Image | None:
         return None
 
 
-def upload_tab(state_key: str) -> None:
+def upload_tab(state_key: str, use_effnet: bool = False) -> None:
     if state_key in st.session_state:
         img = st.session_state[state_key]
         st.image(img, caption="업로드된 이미지", use_container_width=True)
         if st.button("🗑️ 이미지 지우기", key=f"clear_{state_key}"):
             del st.session_state[state_key]
             st.rerun()
-        show_result(img)
+        show_result(img, use_effnet=use_effnet)
     else:
         uploaded = st.file_uploader(
             "생선 사진을 업로드하세요 (jpg / png / webp)",
@@ -133,10 +134,13 @@ def upload_tab(state_key: str) -> None:
                 st.rerun()
 
 
-tab_upload, tab_camera = st.tabs(["📁 사진 업로드", "📷 카메라 촬영"])
+tab_yolo, tab_eff, tab_camera = st.tabs(["📁 사진업로드 YOLO", "📁 사진업로드 EFF", "📷 카메라 촬영"])
 
-with tab_upload:
-    upload_tab("img_upload")
+with tab_yolo:
+    upload_tab("img_yolo", use_effnet=False)
+
+with tab_eff:
+    upload_tab("img_eff", use_effnet=True)
 
 with tab_camera:
     if not st.session_state.get("camera_active"):
