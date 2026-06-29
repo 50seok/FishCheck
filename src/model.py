@@ -21,11 +21,13 @@ SKIP_CLASSES = {"bangeo", "bushiri"}
 EFFNET_CLASSES = ["gajami", "gwangeo"]
 
 CLASS_KO = {
-    "gajami" : "가자미/도다리",
-    "gwangeo": "광어",
+    "gajami"          : "가자미/도다리",
+    "gwangeo"         : "광어",
+    "gajami_head_eye" : "가자미/도다리",
+    "gwangeo_head_eye": "광어",
 }
 
-FISH_INFO = {
+_BASE_INFO = {
     "gajami": {
         "학명": "Pleuronichthys cornutus",
         "특징": "몸이 납작하고 눈이 오른쪽. 입이 작고 체형이 둥글다.",
@@ -38,6 +40,11 @@ FISH_INFO = {
         "구별포인트": "눈 방향이 왼쪽 (좌광우도). 도다리보다 입이 큼.",
         "주의": "도다리·가자미와 혼동 주의 — 눈 방향과 입 크기로 구분",
     },
+}
+FISH_INFO = {
+    **_BASE_INFO,
+    "gajami_head_eye" : _BASE_INFO["gajami"],
+    "gwangeo_head_eye": _BASE_INFO["gwangeo"],
 }
 
 _EFFNET_TF = T.Compose([
