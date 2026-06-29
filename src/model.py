@@ -171,27 +171,27 @@ def predict(img: Image.Image, use_effnet: bool = True) -> dict:
     }
 
 
+@st.cache_resource(show_spinner=False)
+def _load_clip():
+    from transformers import CLIPProcessor, CLIPModel
+    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+    processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+    model.eval()
+    return model, processor
+
+_CLIP_LABELS = ["a real photograph", "an illustration or drawing or cartoon"]
+
 def is_real_photo(img: Image.Image) -> bool:
-    # 1) EXIF 체크 — 카메라 촬영 사진엔 Make/Model/DateTimeOriginal 존재
-    CAMERA_TAGS = {271, 272, 306, 36867, 33434}
     try:
-        exif = img.getexif()
-        if exif and any(tag in exif for tag in CAMERA_TAGS):
-            return True
+        clip_model, clip_proc = _load_clip()
+        inputs = clip_proc(text=_CLIP_LABELS, images=img.convert("RGB"),
+                           return_tensors="pt", padding=True)
+        with torch.no_grad():
+            probs = clip_model(**inputs).logits_per_image.softmax(dim=1)[0]
+        # probs[0] = real photo 확률
+        return float(probs[0]) >= 0.5
     except Exception:
-        pass
-
-    # 2) 채도 체크 — 일러스트는 채도가 높고 균일, 실사는 낮고 불균일
-    rgb  = np.array(img.convert("RGB"), dtype=np.float32) / 255.0
-    maxc = rgb.max(axis=2)
-    minc = rgb.min(axis=2)
-    sat  = np.where(maxc > 0, (maxc - minc) / maxc, 0.0)
-    mean_sat = float(sat.mean())
-    if mean_sat > 0.38:   # 채도 높음 → 일러스트 의심
-        return False
-
-    # 3) 노이즈 휴리스틱 — 실사는 블러 후에도 grain 잔존
-    gray     = img.convert("L").resize((128, 128))
-    blurred  = gray.filter(ImageFilter.GaussianBlur(radius=3))
-    hf_noise = np.abs(np.array(gray, dtype=np.float32) - np.array(blurred, dtype=np.float32)).mean()
-    return hf_noise >= 4.5
+        # CLIP 로드 실패 시 노이즈 휴리스틱 fallback
+        gray    = img.convert("L").resize((128, 128))
+        blurred = gray.filter(ImageFilter.GaussianBlur(radius=3))
+        return float(np.abs(np.array(gray, dtype=np.float32) - np.array(blurred, dtype=np.float32)).mean()) >= 4.5
