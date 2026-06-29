@@ -1,8 +1,9 @@
 import os
 from pathlib import Path
 
+import numpy as np
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageFilter
 from ultralytics import YOLO
 
 MODEL_PATH = "models/best.pt"
@@ -86,3 +87,16 @@ def predict(img: Image.Image) -> dict:
         "top3"          : top3,
         "annotated_image": result.plot(),
     }
+
+
+def is_real_photo(img: Image.Image, threshold: float = 3.0) -> bool:
+    """실사 사진 여부 판별.
+    실사: 가우시안 블러 후에도 grain/noise 잔존 → hf_noise 높음
+    일러스트/그림: 블러하면 평탄해짐 → hf_noise 낮음
+    """
+    gray = img.convert("L").resize((128, 128))
+    blurred = gray.filter(ImageFilter.GaussianBlur(radius=3))
+    arr_orig = np.array(gray, dtype=np.float32)
+    arr_blur = np.array(blurred, dtype=np.float32)
+    hf_noise = np.abs(arr_orig - arr_blur).mean()
+    return hf_noise >= threshold

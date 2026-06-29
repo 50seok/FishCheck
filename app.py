@@ -2,7 +2,7 @@ import numpy as np
 import streamlit as st
 from PIL import Image
 
-from src.model import predict, load_model, FISH_INFO, CLASS_KO
+from src.model import predict, load_model, is_real_photo, FISH_INFO, CLASS_KO
 
 st.set_page_config(
     page_title="FishCheck — 수산시장 생선 판별기",
@@ -69,6 +69,12 @@ with tab_camera:
         img = Image.open(shot)
 
 if img is not None:
+    if not is_real_photo(img):
+        st.warning(
+            "실제 사진이 아닌 것으로 감지됩니다. "
+            "일러스트·그림·스크린샷에서는 판별 결과가 부정확할 수 있습니다.",
+            icon="⚠️",
+        )
     with st.spinner("어종 분석 중..."):
         result = predict(img)
 
