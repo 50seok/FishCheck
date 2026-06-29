@@ -171,8 +171,18 @@ def predict(img: Image.Image, use_effnet: bool = True) -> dict:
     }
 
 
-def is_real_photo(img: Image.Image, threshold: float = 3.0) -> bool:
-    gray    = img.convert("L").resize((128, 128))
-    blurred = gray.filter(ImageFilter.GaussianBlur(radius=3))
+def is_real_photo(img: Image.Image) -> bool:
+    # 1) EXIF 체크 — 카메라 촬영 사진엔 Make/Model/DateTimeOriginal 존재
+    CAMERA_TAGS = {271, 272, 306, 36867, 33434}  # Make, Model, DateTime, DateTimeOriginal, ExposureTime
+    try:
+        exif = img.getexif()
+        if exif and any(tag in exif for tag in CAMERA_TAGS):
+            return True
+    except Exception:
+        pass
+
+    # 2) 노이즈 휴리스틱 — 실사는 블러 후에도 grain 잔존
+    gray     = img.convert("L").resize((128, 128))
+    blurred  = gray.filter(ImageFilter.GaussianBlur(radius=3))
     hf_noise = np.abs(np.array(gray, dtype=np.float32) - np.array(blurred, dtype=np.float32)).mean()
-    return hf_noise >= threshold
+    return hf_noise >= 4.5  # 임계값 상향 (일러스트 오통과 방지)

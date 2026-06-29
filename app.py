@@ -41,11 +41,12 @@ with st.sidebar:
 
 def show_result(img: Image.Image, use_effnet: bool) -> None:
     if not is_real_photo(img):
-        st.warning(
-            "실제 사진이 아닌 것으로 감지됩니다. "
-            "일러스트·그림·스크린샷에서는 판별 결과가 부정확할 수 있습니다.",
-            icon="⚠️",
+        st.error(
+            "일러스트·그림·스크린샷으로 감지됩니다. "
+            "실제 생선 사진만 판별할 수 있습니다.",
+            icon="🚫",
         )
+        return
     with st.spinner("어종 분석 중..."):
         result = predict(img, use_effnet=use_effnet)
 
