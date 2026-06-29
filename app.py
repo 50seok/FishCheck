@@ -139,7 +139,15 @@ with tab_upload:
     upload_tab("img_upload")
 
 with tab_camera:
-    shot = st.camera_input("카메라로 생선을 찍어주세요")
-    if shot:
-        img = Image.open(shot)
-        show_result(img)
+    if not st.session_state.get("camera_active"):
+        if st.button("📷 카메라 시작"):
+            st.session_state["camera_active"] = True
+            st.rerun()
+    else:
+        if st.button("카메라 끄기"):
+            st.session_state["camera_active"] = False
+            st.rerun()
+        shot = st.camera_input("카메라로 생선을 찍어주세요")
+        if shot:
+            img = Image.open(shot)
+            show_result(img)
