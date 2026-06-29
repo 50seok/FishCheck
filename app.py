@@ -134,7 +134,7 @@ def upload_tab(state_key: str, use_effnet: bool = False) -> None:
                 st.rerun()
 
 
-tab_yolo, tab_eff, tab_camera = st.tabs(["📁 사진업로드 YOLO", "📁 사진업로드 EFF", "📷 카메라 촬영"])
+tab_yolo, tab_eff, tab_camera, tab_test = st.tabs(["📁 사진업로드 YOLO", "📁 사진업로드 EFF", "📷 카메라 촬영", "🧪 테스트"])
 
 with tab_yolo:
     upload_tab("img_yolo", use_effnet=False)
@@ -155,3 +155,52 @@ with tab_camera:
         if shot:
             img = Image.open(shot)
             show_result(img)
+
+with tab_test:
+    from pathlib import Path
+
+    TEST_CASES = [
+        {"folder": Path("C:/teamwork/어류이미지관련자료/광어"),    "expected": "gwangeo", "label": "광어"},
+        {"folder": Path("C:/teamwork/어류이미지관련자료/가자미류"), "expected": "gajami",  "label": "가자미류"},
+        {"folder": Path("data/raw/ureok"),                        "expected": None,      "label": "우럭(미탐지 기대)"},
+    ]
+    IMG_EXT = {".jpg", ".jpeg", ".png", ".webp"}
+
+    if st.button("▶ 테스트 실행"):
+        total = pass_ = fail = 0
+        for case in TEST_CASES:
+            if not case["folder"].exists():
+                st.warning(f"경로 없음: {case['folder']}")
+                continue
+            files = sorted([f for f in case["folder"].glob("*")
+                            if f.suffix.lower() in IMG_EXT and "일러스트" not in f.name])
+            st.markdown(f"### {case['label']}")
+            for f in files:
+                img = Image.open(f)
+                r = predict(img)
+                actual_en  = r["class_en"] if r["detected"] else None
+                actual_ko  = r["class_ko"] if r["detected"] else "미탐지"
+                conf_str   = f"{r['confidence']*100:.1f}%" if r["detected"] else "—"
+                expected   = case["expected"]
+
+                if expected is None:
+                    ok = not r["detected"]
+                else:
+                    ok = r["detected"] and actual_en in (expected, f"{expected}_head_eye")
+
+                icon = "✅" if ok else "❌"
+                total += 1
+                pass_ += int(ok)
+                fail  += int(not ok)
+
+                st.markdown(
+                    f"{icon} **{f.name}** — {actual_ko} {conf_str}"
+                    + ("" if ok else f"  *(기대: {'미탐지' if expected is None else CLASS_KO.get(expected, expected)})*")
+                )
+
+        st.divider()
+        color = "green" if fail == 0 else "orange"
+        st.markdown(
+            f"<h3 style='color:{color}'>결과: {pass_}/{total} 통과 &nbsp; 실패 {fail}건</h3>",
+            unsafe_allow_html=True,
+        )
