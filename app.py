@@ -37,7 +37,7 @@ with st.sidebar:
         info = FISH_INFO[en]
         st.markdown(f"**{ko}** — {info['특징'][:30]}...")
     st.divider()
-    st.caption("YOLOv8 기반 · 학습 데이터: 생물 상태 통 생선")
+    st.caption("YOLOv8 + EfficientNetB0 2단계 · 학습 데이터: 생물 상태 통 생선")
 
 tab_upload, tab_camera = st.tabs(["📁 사진 업로드", "📷 카메라 촬영"])
 
