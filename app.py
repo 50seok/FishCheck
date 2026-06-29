@@ -1,4 +1,3 @@
-import numpy as np
 import streamlit as st
 from PIL import Image
 
@@ -10,7 +9,7 @@ st.set_page_config(
     layout="centered",
 )
 
-load_model()  # 앱 시작 시 모델 미리 로드 (첫 업로드 대기 제거)
+load_model()
 
 st.title("🐟 FishCheck")
 st.markdown("**수산시장에서 생선에 속지 않도록 — 사진 한 장으로 어종을 판별합니다**")
@@ -39,62 +38,8 @@ with st.sidebar:
     st.divider()
     st.caption("YOLOv8 + EfficientNetB0 2단계 · 학습 데이터: 생물 상태 통 생선")
 
-tab_yolo, tab_eff, tab_camera = st.tabs(["📁 사진업로드 YOLO", "📁 사진업로드 EFF", "📷 카메라 촬영"])
 
-img: Image.Image | None = None
-use_effnet = False
-
-with tab_yolo:
-    uploaded = st.file_uploader(
-        "생선 사진을 업로드하세요 (jpg / png / webp)",
-        key="upload_yolo",
-        help="YOLO 단일 모델로 판별합니다.",
-    )
-    if uploaded:
-        allowed_mime = {"image/jpeg", "image/png", "image/webp"}
-        if uploaded.type not in allowed_mime:
-            st.error("jpg / png / webp 이미지 파일만 업로드할 수 있습니다.")
-        else:
-            try:
-                img = Image.open(uploaded)
-                img.verify()
-                uploaded.seek(0)
-                img = Image.open(uploaded)
-                use_effnet = False
-                st.image(img, caption="업로드된 이미지", use_container_width=True)
-            except Exception:
-                st.error("손상된 이미지 파일입니다. 다른 사진을 사용해 주세요.")
-                img = None
-
-with tab_eff:
-    uploaded_eff = st.file_uploader(
-        "생선 사진을 업로드하세요 (jpg / png / webp)",
-        key="upload_eff",
-        help="YOLO 탐지 → EfficientNetB0 분류 2단계로 판별합니다.",
-    )
-    if uploaded_eff:
-        allowed_mime = {"image/jpeg", "image/png", "image/webp"}
-        if uploaded_eff.type not in allowed_mime:
-            st.error("jpg / png / webp 이미지 파일만 업로드할 수 있습니다.")
-        else:
-            try:
-                img = Image.open(uploaded_eff)
-                img.verify()
-                uploaded_eff.seek(0)
-                img = Image.open(uploaded_eff)
-                use_effnet = True
-                st.image(img, caption="업로드된 이미지", use_container_width=True)
-            except Exception:
-                st.error("손상된 이미지 파일입니다. 다른 사진을 사용해 주세요.")
-                img = None
-
-with tab_camera:
-    shot = st.camera_input("카메라로 생선을 찍어주세요")
-    if shot:
-        img = Image.open(shot)
-        use_effnet = False
-
-if img is not None:
+def show_result(img: Image.Image, use_effnet: bool) -> None:
     if not is_real_photo(img):
         st.warning(
             "실제 사진이 아닌 것으로 감지됩니다. "
@@ -108,39 +53,87 @@ if img is not None:
 
     if not result["detected"]:
         st.error("어종을 판별할 수 없습니다. 전체 체형이 보이는 통 생선 사진으로 다시 시도해 주세요.")
-    else:
-        fish_en    = result["class_en"]
-        fish_ko    = result["class_ko"]
-        confidence = result["confidence"]
-        info       = FISH_INFO.get(fish_en, {})
+        return
 
-        if result.get("annotated_image") is not None:
-            ann = result["annotated_image"]
-            st.image(ann[..., ::-1], caption="탐지 결과 (바운딩 박스)", use_container_width=True)
+    fish_en    = result["class_en"]
+    fish_ko    = result["class_ko"]
+    confidence = result["confidence"]
+    info       = FISH_INFO.get(fish_en, {})
 
-        col_name, col_conf = st.columns([2, 1])
-        with col_name:
-            st.markdown(f"## 판별 결과: **{fish_ko}**")
-            if info:
-                st.caption(f"학명: *{info['학명']}*")
-        with col_conf:
-            conf_pct = confidence * 100
-            color = "green" if conf_pct >= 70 else "orange" if conf_pct >= 50 else "red"
-            st.markdown(
-                f"<h2 style='color:{color};text-align:right'>{conf_pct:.1f}%</h2>",
-                unsafe_allow_html=True,
-            )
-            st.caption("신뢰도")
+    if result.get("annotated_image") is not None:
+        st.image(result["annotated_image"][..., ::-1], caption="탐지 결과 (바운딩 박스)", use_container_width=True)
 
+    col_name, col_conf = st.columns([2, 1])
+    with col_name:
+        st.markdown(f"## 판별 결과: **{fish_ko}**")
         if info:
-            st.info(f"**특징**: {info['특징']}")
-            st.success(f"**구별 포인트**: {info['구별포인트']}")
-            st.warning(f"**주의**: {info['주의']}")
+            st.caption(f"학명: *{info['학명']}*")
+    with col_conf:
+        conf_pct = confidence * 100
+        color = "green" if conf_pct >= 70 else "orange" if conf_pct >= 50 else "red"
+        st.markdown(
+            f"<h2 style='color:{color};text-align:right'>{conf_pct:.1f}%</h2>",
+            unsafe_allow_html=True,
+        )
+        st.caption("신뢰도")
 
-        if result.get("top3") and len(result["top3"]) > 1:
-            with st.expander("상위 후보 보기"):
-                for det in result["top3"]:
-                    st.progress(det["confidence"], text=f"{det['class_ko']}  {det['confidence']*100:.1f}%")
+    if info:
+        st.info(f"**특징**: {info['특징']}")
+        st.success(f"**구별 포인트**: {info['구별포인트']}")
+        st.warning(f"**주의**: {info['주의']}")
 
-        if confidence < 0.7:
-            st.warning("신뢰도가 낮습니다. 전체 체형이 잘 보이는 통 생선 사진으로 다시 시도해 주세요.")
+    if result.get("top3") and len(result["top3"]) > 1:
+        with st.expander("상위 후보 보기"):
+            for det in result["top3"]:
+                st.progress(det["confidence"], text=f"{det['class_ko']}  {det['confidence']*100:.1f}%")
+
+    if confidence < 0.7:
+        st.warning("신뢰도가 낮습니다. 전체 체형이 잘 보이는 통 생선 사진으로 다시 시도해 주세요.")
+
+
+def load_image(uploaded) -> Image.Image | None:
+    allowed_mime = {"image/jpeg", "image/png", "image/webp"}
+    if uploaded.type not in allowed_mime:
+        st.error("jpg / png / webp 이미지 파일만 업로드할 수 있습니다.")
+        return None
+    try:
+        img = Image.open(uploaded)
+        img.verify()
+        uploaded.seek(0)
+        return Image.open(uploaded)
+    except Exception:
+        st.error("손상된 이미지 파일입니다. 다른 사진을 사용해 주세요.")
+        return None
+
+
+tab_yolo, tab_eff, tab_camera = st.tabs(["📁 사진업로드 YOLO", "📁 사진업로드 EFF", "📷 카메라 촬영"])
+
+with tab_yolo:
+    uploaded = st.file_uploader(
+        "생선 사진을 업로드하세요 (jpg / png / webp)",
+        key="upload_yolo",
+        help="YOLO 단일 모델로 판별합니다.",
+    )
+    if uploaded:
+        img = load_image(uploaded)
+        if img:
+            st.image(img, caption="업로드된 이미지", use_container_width=True)
+            show_result(img, use_effnet=False)
+
+with tab_eff:
+    uploaded_eff = st.file_uploader(
+        "생선 사진을 업로드하세요 (jpg / png / webp)",
+        key="upload_eff",
+        help="YOLO 탐지 → EfficientNetB0 분류 2단계로 판별합니다.",
+    )
+    if uploaded_eff:
+        img = load_image(uploaded_eff)
+        if img:
+            st.image(img, caption="업로드된 이미지", use_container_width=True)
+            show_result(img, use_effnet=True)
+
+with tab_camera:
+    shot = st.camera_input("카메라로 생선을 찍어주세요")
+    if shot:
+        img = Image.open(shot)
+        show_result(img, use_effnet=False)
