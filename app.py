@@ -2,13 +2,15 @@ import numpy as np
 import streamlit as st
 from PIL import Image
 
-from src.model import predict, FISH_INFO, CLASS_KO
+from src.model import predict, load_model, FISH_INFO, CLASS_KO
 
 st.set_page_config(
     page_title="FishCheck — 수산시장 생선 판별기",
     page_icon="🐟",
     layout="centered",
 )
+
+load_model()  # 앱 시작 시 모델 미리 로드 (첫 업로드 대기 제거)
 
 st.title("🐟 FishCheck")
 st.markdown("**수산시장에서 생선에 속지 않도록 — 사진 한 장으로 어종을 판별합니다**")
