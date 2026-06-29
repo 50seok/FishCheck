@@ -173,7 +173,7 @@ def predict(img: Image.Image, use_effnet: bool = True) -> dict:
 
 def is_real_photo(img: Image.Image) -> bool:
     # 1) EXIF 체크 — 카메라 촬영 사진엔 Make/Model/DateTimeOriginal 존재
-    CAMERA_TAGS = {271, 272, 306, 36867, 33434}  # Make, Model, DateTime, DateTimeOriginal, ExposureTime
+    CAMERA_TAGS = {271, 272, 306, 36867, 33434}
     try:
         exif = img.getexif()
         if exif and any(tag in exif for tag in CAMERA_TAGS):
@@ -181,8 +181,17 @@ def is_real_photo(img: Image.Image) -> bool:
     except Exception:
         pass
 
-    # 2) 노이즈 휴리스틱 — 실사는 블러 후에도 grain 잔존
+    # 2) 채도 체크 — 일러스트는 채도가 높고 균일, 실사는 낮고 불균일
+    rgb  = np.array(img.convert("RGB"), dtype=np.float32) / 255.0
+    maxc = rgb.max(axis=2)
+    minc = rgb.min(axis=2)
+    sat  = np.where(maxc > 0, (maxc - minc) / maxc, 0.0)
+    mean_sat = float(sat.mean())
+    if mean_sat > 0.38:   # 채도 높음 → 일러스트 의심
+        return False
+
+    # 3) 노이즈 휴리스틱 — 실사는 블러 후에도 grain 잔존
     gray     = img.convert("L").resize((128, 128))
     blurred  = gray.filter(ImageFilter.GaussianBlur(radius=3))
     hf_noise = np.abs(np.array(gray, dtype=np.float32) - np.array(blurred, dtype=np.float32)).mean()
-    return hf_noise >= 4.5  # 임계값 상향 (일러스트 오통과 방지)
+    return hf_noise >= 4.5
