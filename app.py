@@ -39,10 +39,10 @@ with st.sidebar:
         info = FISH_INFO[en]
         st.markdown(f"**{ko}** — {info['특징'][:30]}...")
     st.divider()
-    st.caption("YOLOv8 + EfficientNetB0 2단계 · 학습 데이터: 생물 상태 통 생선")
+    st.caption("YOLOv8 · 학습 데이터: 생물 상태 통 생선")
 
 
-def show_result(img: Image.Image, use_effnet: bool) -> None:
+def show_result(img: Image.Image) -> None:
     with st.spinner("📷 이미지 유형 확인 중 (CLIP)..."):
         real = is_real_photo(img)
 
@@ -54,7 +54,7 @@ def show_result(img: Image.Image, use_effnet: bool) -> None:
         return
 
     with st.spinner("🔍 어종 분석 중..."):
-        result = predict(img, use_effnet=use_effnet)
+        result = predict(img)
 
     st.divider()
 
@@ -113,19 +113,18 @@ def load_image(uploaded) -> Image.Image | None:
         return None
 
 
-def upload_tab(state_key: str, use_effnet: bool, help_text: str) -> None:
+def upload_tab(state_key: str) -> None:
     if state_key in st.session_state:
         img = st.session_state[state_key]
         st.image(img, caption="업로드된 이미지", use_container_width=True)
         if st.button("🗑️ 이미지 지우기", key=f"clear_{state_key}"):
             del st.session_state[state_key]
             st.rerun()
-        show_result(img, use_effnet=use_effnet)
+        show_result(img)
     else:
         uploaded = st.file_uploader(
             "생선 사진을 업로드하세요 (jpg / png / webp)",
             key=f"upload_{state_key}",
-            help=help_text,
         )
         if uploaded:
             img = load_image(uploaded)
@@ -134,16 +133,13 @@ def upload_tab(state_key: str, use_effnet: bool, help_text: str) -> None:
                 st.rerun()
 
 
-tab_yolo, tab_eff, tab_camera = st.tabs(["📁 사진업로드 YOLO", "📁 사진업로드 EFF", "📷 카메라 촬영"])
+tab_upload, tab_camera = st.tabs(["📁 사진 업로드", "📷 카메라 촬영"])
 
-with tab_yolo:
-    upload_tab("img_yolo", use_effnet=False, help_text="YOLO 단일 모델로 판별합니다.")
-
-with tab_eff:
-    upload_tab("img_eff", use_effnet=True, help_text="YOLO 탐지 → EfficientNetB0 분류 2단계로 판별합니다.")
+with tab_upload:
+    upload_tab("img_upload")
 
 with tab_camera:
     shot = st.camera_input("카메라로 생선을 찍어주세요")
     if shot:
         img = Image.open(shot)
-        show_result(img, use_effnet=False)
+        show_result(img)
