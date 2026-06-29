@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import cv2
 import numpy as np
 import streamlit as st
 import torch
@@ -146,13 +147,27 @@ def predict(img: Image.Image, use_effnet: bool = True) -> dict:
                 break
 
     class_ko = CLASS_KO.get(class_en, class_en)
+
+    # EFF 모드: EfficientNet 결과로 bbox 라벨 재드로잉
+    if effnet is not None:
+        x1, y1, x2, y2 = best["xyxy"]
+        frame = np.array(img.convert("RGB"))[:, :, ::-1].copy()
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
+        label = f"{class_en} {confidence:.2f}"
+        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+        cv2.rectangle(frame, (x1, y1 - th - 8), (x1 + tw + 4, y1), (0, 255, 255), -1)
+        cv2.putText(frame, label, (x1 + 2, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+        annotated = frame
+    else:
+        annotated = result.plot()
+
     return {
         "detected"       : True,
         "class_en"       : class_en,
         "class_ko"       : class_ko,
         "confidence"     : confidence,
         "top3"           : top3,
-        "annotated_image": result.plot(),
+        "annotated_image": annotated,
     }
 
 
