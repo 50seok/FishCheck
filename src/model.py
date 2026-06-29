@@ -172,7 +172,7 @@ def predict(img: Image.Image, use_effnet: bool = True) -> dict:
 
 
 @st.cache_resource(show_spinner=False)
-def _load_clip():
+def load_clip():
     from transformers import CLIPProcessor, CLIPModel
     model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
     processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
@@ -183,7 +183,7 @@ _CLIP_LABELS = ["a real photograph", "an illustration or drawing or cartoon"]
 
 def is_real_photo(img: Image.Image) -> bool:
     try:
-        clip_model, clip_proc = _load_clip()
+        clip_model, clip_proc = load_clip()
         inputs = clip_proc(text=_CLIP_LABELS, images=img.convert("RGB"),
                            return_tensors="pt", padding=True)
         with torch.no_grad():

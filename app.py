@@ -1,7 +1,7 @@
 import streamlit as st
 from PIL import Image
 
-from src.model import predict, load_model, is_real_photo, FISH_INFO, CLASS_KO
+from src.model import predict, load_model, load_clip, is_real_photo, FISH_INFO, CLASS_KO
 
 st.set_page_config(
     page_title="FishCheck — 수산시장 생선 판별기",
@@ -10,6 +10,7 @@ st.set_page_config(
 )
 
 load_model()
+load_clip()  # 앱 시작 시 CLIP 미리 로드
 
 st.title("🐟 FishCheck")
 st.markdown("**수산시장에서 생선에 속지 않도록 — 사진 한 장으로 어종을 판별합니다**")
@@ -40,14 +41,17 @@ with st.sidebar:
 
 
 def show_result(img: Image.Image, use_effnet: bool) -> None:
-    if not is_real_photo(img):
+    with st.spinner("📷 이미지 유형 확인 중 (CLIP)..."):
+        real = is_real_photo(img)
+
+    if not real:
         st.error(
-            "일러스트·그림·스크린샷으로 감지됩니다. "
-            "실제 생선 사진만 판별할 수 있습니다.",
+            "일러스트·그림·스크린샷으로 감지됩니다. 실제 생선 사진만 판별할 수 있습니다.",
             icon="🚫",
         )
         return
-    with st.spinner("어종 분석 중..."):
+
+    with st.spinner("🔍 어종 분석 중..."):
         result = predict(img, use_effnet=use_effnet)
 
     st.divider()
@@ -107,31 +111,34 @@ def load_image(uploaded) -> Image.Image | None:
         return None
 
 
+def upload_tab(state_key: str, use_effnet: bool, help_text: str) -> None:
+    if state_key in st.session_state:
+        img = st.session_state[state_key]
+        st.image(img, caption="업로드된 이미지", use_container_width=True)
+        if st.button("🗑️ 이미지 지우기", key=f"clear_{state_key}"):
+            del st.session_state[state_key]
+            st.rerun()
+        show_result(img, use_effnet=use_effnet)
+    else:
+        uploaded = st.file_uploader(
+            "생선 사진을 업로드하세요 (jpg / png / webp)",
+            key=f"upload_{state_key}",
+            help=help_text,
+        )
+        if uploaded:
+            img = load_image(uploaded)
+            if img:
+                st.session_state[state_key] = img
+                st.rerun()
+
+
 tab_yolo, tab_eff, tab_camera = st.tabs(["📁 사진업로드 YOLO", "📁 사진업로드 EFF", "📷 카메라 촬영"])
 
 with tab_yolo:
-    uploaded = st.file_uploader(
-        "생선 사진을 업로드하세요 (jpg / png / webp)",
-        key="upload_yolo",
-        help="YOLO 단일 모델로 판별합니다.",
-    )
-    if uploaded:
-        img = load_image(uploaded)
-        if img:
-            st.image(img, caption="업로드된 이미지", use_container_width=True)
-            show_result(img, use_effnet=False)
+    upload_tab("img_yolo", use_effnet=False, help_text="YOLO 단일 모델로 판별합니다.")
 
 with tab_eff:
-    uploaded_eff = st.file_uploader(
-        "생선 사진을 업로드하세요 (jpg / png / webp)",
-        key="upload_eff",
-        help="YOLO 탐지 → EfficientNetB0 분류 2단계로 판별합니다.",
-    )
-    if uploaded_eff:
-        img = load_image(uploaded_eff)
-        if img:
-            st.image(img, caption="업로드된 이미지", use_container_width=True)
-            show_result(img, use_effnet=True)
+    upload_tab("img_eff", use_effnet=True, help_text="YOLO 탐지 → EfficientNetB0 분류 2단계로 판별합니다.")
 
 with tab_camera:
     shot = st.camera_input("카메라로 생선을 찍어주세요")
