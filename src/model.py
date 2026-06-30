@@ -1,11 +1,10 @@
 import os
 from pathlib import Path
 
-import cv2
 import numpy as np
 import streamlit as st
 import torch
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from ultralytics import YOLO
 
 MODEL_PATH = "models/best.pt"
@@ -57,12 +56,18 @@ _HEAD_EYE_CLASSES = {"gwangeo_head_eye", "gajami_head_eye"}
 
 def _draw_bbox(img: Image.Image, xyxy: tuple, label: str, color: tuple) -> np.ndarray:
     x1, y1, x2, y2 = xyxy
-    frame = np.array(img.convert("RGB"))[:, :, ::-1].copy()
-    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-    (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-    cv2.rectangle(frame, (x1, y1 - th - 8), (x1 + tw + 4, y1), color, -1)
-    cv2.putText(frame, label, (x1 + 2, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
-    return frame
+    out = img.convert("RGB").copy()
+    draw = ImageDraw.Draw(out)
+    pil_color = tuple(color[::-1])  # BGR→RGB
+    draw.rectangle([x1, y1, x2, y2], outline=pil_color, width=2)
+    try:
+        font = ImageFont.truetype("arial.ttf", 16)
+    except Exception:
+        font = ImageFont.load_default()
+    tw, th = draw.textsize(label, font=font) if hasattr(draw, "textsize") else (len(label) * 8, 14)
+    draw.rectangle([x1, y1 - th - 4, x1 + tw + 4, y1], fill=pil_color)
+    draw.text((x1 + 2, y1 - th - 2), label, fill=(0, 0, 0), font=font)
+    return np.array(out)[:, :, ::-1]
 
 
 BODY_CONF_MIN = 0.70  # 바디만으로 판정할 때 최소 신뢰도
