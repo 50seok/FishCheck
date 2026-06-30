@@ -65,9 +65,13 @@ def _draw_bbox(img: Image.Image, xyxy: tuple, label: str, color: tuple) -> np.nd
     return frame
 
 
+BODY_CONF_MIN = 0.70  # 바디만으로 판정할 때 최소 신뢰도
+
 def predict(img: Image.Image) -> dict:
     yolo    = load_model()
-    results = yolo(img, verbose=False, conf=0.65)
+    w, _    = img.size
+    # 눈 박스는 낮은 conf에서도 검출 필요 → 0.15로 낮춤
+    results = yolo(img, verbose=False, conf=0.15)
     result  = results[0]
 
     if result.boxes is None or len(result.boxes) == 0:
@@ -82,7 +86,8 @@ def predict(img: Image.Image) -> dict:
             continue
         x1, y1, x2, y2 = b.xyxy[0]
         box = {"cls_name": cls_name, "conf": float(b.conf[0]),
-               "xyxy": (int(x1), int(y1), int(x2), int(y2))}
+               "xyxy": (int(x1), int(y1), int(x2), int(y2)),
+               "cx_norm": float((x1 + x2) / 2 / w)}
         if cls_name in _HEAD_EYE_CLASSES:
             head_eye_boxes.append(box)
         elif float((x2 - x1) / (y2 - y1 + 1e-6)) >= MIN_ASPECT:
@@ -91,11 +96,12 @@ def predict(img: Image.Image) -> dict:
     head_eye_boxes.sort(key=lambda x: x["conf"], reverse=True)
     body_boxes.sort(key=lambda x: x["conf"], reverse=True)
 
-    # head_eye 우선: 눈 위치(좌광우도)가 확실한 판별 근거, EfficientNet 불필요
+    # 눈 검출 우선: 클래스명 무시, X좌표로만 좌광우도 판정
     if head_eye_boxes:
         best       = head_eye_boxes[0]
-        class_en   = best["cls_name"].replace("_head_eye", "")
-        class_ko   = CLASS_KO.get(best["cls_name"], class_en)
+        # ponytail: 눈 클래스명은 부정확, X좌표가 신뢰도 높음 (테스트 검증)
+        class_en   = "gwangeo" if best["cx_norm"] < 0.5 else "gajami"
+        class_ko   = CLASS_KO[class_en]
         confidence = best["conf"]
         annotated  = _draw_bbox(img, best["xyxy"],
                                 f"{class_en} (eye) {confidence:.2f}", (0, 200, 255))
@@ -106,11 +112,12 @@ def predict(img: Image.Image) -> dict:
             "annotated_image": annotated,
         }
 
+    # 바디 fallback: conf >= 0.70 이상일 때만 판정
+    body_boxes = [b for b in body_boxes if b["conf"] >= BODY_CONF_MIN]
     if not body_boxes:
         return {"detected": False, "class_en": None, "class_ko": None, "confidence": 0.0, "top3": []}
 
     best = body_boxes[0]
-
     class_en   = best["cls_name"]
     confidence = best["conf"]
     seen, top3 = set(), []
