@@ -68,7 +68,7 @@ def show_result(img: Image.Image) -> None:
     info       = FISH_INFO.get(fish_en, {})
 
     if confidence < 0.6:
-        st.error("이미지가 적정하지 않습니다. 생선 전체가 잘 보이도록 다시 찍어주세요.")
+        st.error("이미지가 적정하지 않습니다. 다시 찍어주세요.")
         return
 
     if result.get("annotated_image") is not None:
