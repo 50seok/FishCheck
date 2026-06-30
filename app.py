@@ -67,6 +67,10 @@ def show_result(img: Image.Image) -> None:
     confidence = result["confidence"]
     info       = FISH_INFO.get(fish_en, {})
 
+    if confidence < 0.6:
+        st.error("이미지가 적정하지 않습니다. 생선 전체가 잘 보이도록 다시 찍어주세요.")
+        return
+
     if result.get("annotated_image") is not None:
         st.image(result["annotated_image"][..., ::-1], caption="탐지 결과 (바운딩 박스)", use_container_width=True)
 
@@ -88,10 +92,6 @@ def show_result(img: Image.Image) -> None:
         st.info(f"**특징**: {info['특징']}")
         st.success(f"**구별 포인트**: {info['구별포인트']}")
         st.warning(f"**주의**: {info['주의']}")
-
-    if confidence < 0.6:
-        st.error("이미지가 적정하지 않습니다. 생선 전체가 잘 보이도록 다시 찍어주세요.")
-        return
 
     if result.get("top3") and len(result["top3"]) > 1:
         with st.expander("상위 후보 보기"):
