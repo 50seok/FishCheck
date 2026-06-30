@@ -89,6 +89,10 @@ def show_result(img: Image.Image) -> None:
         st.success(f"**구별 포인트**: {info['구별포인트']}")
         st.warning(f"**주의**: {info['주의']}")
 
+    if confidence < 0.6:
+        st.error("이미지가 적정하지 않습니다. 생선 전체가 잘 보이도록 다시 찍어주세요.")
+        return
+
     if result.get("top3") and len(result["top3"]) > 1:
         with st.expander("상위 후보 보기"):
             for det in result["top3"]:
