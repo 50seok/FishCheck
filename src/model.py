@@ -101,8 +101,8 @@ def predict(img: Image.Image) -> dict:
     head_eye_boxes.sort(key=lambda x: x["conf"], reverse=True)
     body_boxes.sort(key=lambda x: x["conf"], reverse=True)
 
-    # 눈 검출 우선: 클래스명 무시, X좌표로만 좌광우도 판정
-    if head_eye_boxes:
+    # 눈 검출 우선: 바디도 함께 잡혀야 납작한 생선으로 인정 (우럭 등 오판 방지)
+    if head_eye_boxes and body_boxes:
         best       = head_eye_boxes[0]
         # ponytail: 눈 클래스명은 부정확, X좌표가 신뢰도 높음 (테스트 검증)
         class_en   = "gwangeo" if best["cx_norm"] < 0.5 else "gajami"
