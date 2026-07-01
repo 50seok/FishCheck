@@ -104,8 +104,10 @@ def predict(img: Image.Image) -> dict:
     # 눈 검출 우선: 바디도 함께 잡혀야 납작한 생선으로 인정 (우럭 등 오판 방지)
     if head_eye_boxes and body_boxes:
         best       = head_eye_boxes[0]
-        # ponytail: 눈 클래스명은 부정확, X좌표가 신뢰도 높음 (테스트 검증)
-        class_en   = "gwangeo" if best["cx_norm"] < 0.5 else "gajami"
+        body_cx    = body_boxes[0]["cx_norm"]
+        # 이미지 절대 중앙(0.5) 대신 바디 중심 기준 상대 위치로 판별
+        # → 생선이 프레임 어느 위치에 있어도 좌광우도 규칙 일관 적용
+        class_en   = "gwangeo" if best["cx_norm"] < body_cx else "gajami"
         class_ko   = CLASS_KO[class_en]
         confidence = best["conf"]
         annotated  = _draw_bbox(img, best["xyxy"],
